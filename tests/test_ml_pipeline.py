@@ -9,9 +9,9 @@ import numpy as np
 from pathlib import Path
 import sys
 import joblib
-import mlflow # NUEVA IMPORTACIÓN
-from mlflow.exceptions import MlflowException # NUEVA IMPORTACIÓN
-from src.utils.config import MLFLOW_ML_EXPERIMENT_NAME # NUEVA IMPORTACIÓN
+import mlflow
+import tempfile
+import shutil
 
 # Add project root to path
 project_root = Path(__file__).resolve().parents[1]
@@ -69,24 +69,30 @@ class TestModelTrainer:
     Test suite for ModelTrainer
     """
     
-    @classmethod
-    def setup_class(cls):
-        """
-        Configura el experimento de MLflow para las pruebas.
-        Esto resuelve el error 'Could not find experiment with ID 0'.
-        """
-        experiment_name = MLFLOW_ML_EXPERIMENT_NAME
+    @pytest.fixture(scope="class", autouse=True)
+    def setup_mlflow(self):
+        """Setup MLflow for testing"""
+        # Create temporary directory for MLflow runs
+        self.temp_dir = tempfile.mkdtemp()
+        mlflow.set_tracking_uri(f"file://{self.temp_dir}")
         
+        # Create or get experiment
+        experiment_name = "test_experiment"
         try:
-            # Intentar establecer el experimento (si ya existe)
-            mlflow.set_experiment(experiment_name)
-        except MlflowException:
-            # Si no existe (primera vez o limpieza), crearlo
-            mlflow.create_experiment(experiment_name)
-            mlflow.set_experiment(experiment_name)
+            experiment_id = mlflow.create_experiment(experiment_name)
+        except mlflow.exceptions.MlflowException:
+            # Experiment already exists
+            experiment = mlflow.get_experiment_by_name(experiment_name)
+            experiment_id = experiment.experiment_id
         
-        print(f"\nMLflow Experiment configurado para tests: {experiment_name}")
-
+        mlflow.set_experiment(experiment_name)
+        
+        yield
+        
+        # Cleanup
+        mlflow.end_run()  # End any active runs
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
+    
     @pytest.fixture
     def setup_data(self):
         """Setup preprocessed data for training"""

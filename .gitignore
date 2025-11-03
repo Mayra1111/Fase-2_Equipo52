@@ -1,0 +1,97 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# Environment
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+mlruns/
+models/*.pkl
+models/*.h5
+models/*.joblib
+reports/figures/*.png
+reports/figures/*.pdf
+
+# Data (keep structure, ignore contents)
+# DVC will track large data files, Git only tracks .dvc metadata
+data/raw/*
+!data/raw/.gitkeep
+!data/raw/*.dvc
+data/interim/*.csv
+data/interim/*.parquet
+data/interim/*.pkl
+!data/interim/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+
+# DVC
+# Ignore DVC cache and temp files, but track .dvc metadata files
+.dvc/tmp
+.dvc/cache
+.dvc/plots
+
+# Logs
+*.log
+logs/

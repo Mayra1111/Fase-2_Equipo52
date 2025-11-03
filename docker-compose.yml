@@ -1,0 +1,175 @@
+version: '3.8'
+
+services:
+  # DVC Service - Pull data from S3 before running pipelines
+  dvc-pull:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: obesity-ml-dvc-pull
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./.dvc:/app/.dvc
+      - ./.env:/app/.env
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: dvc pull
+    networks:
+      - ml-network
+
+  # Main application service - EDA Pipeline
+  eda-pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: obesity-ml-eda
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./reports:/app/reports
+      - ./mlruns:/app/mlruns
+      - ./.dvc:/app/.dvc
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: python scripts/run_eda.py
+    networks:
+      - ml-network
+    depends_on:
+      - dvc-pull
+
+  # ML Pipeline service - Train models
+  ml-pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: obesity-ml-train
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./reports:/app/reports
+      - ./mlruns:/app/mlruns
+      - ./.dvc:/app/.dvc
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: python scripts/run_ml.py
+    networks:
+      - ml-network
+    depends_on:
+      - dvc-pull
+      - eda-pipeline
+
+  # Comparison service - Validate results
+  compare:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: obesity-ml-compare
+    volumes:
+      - ./data:/app/data
+      - ./.dvc:/app/.dvc
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: python scripts/compare_datasets.py
+    networks:
+      - ml-network
+    depends_on:
+      - dvc-pull
+      - eda-pipeline
+
+  # Visualization service - Generate EDA plots
+  visualize:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: obesity-ml-visualize
+    volumes:
+      - ./data:/app/data
+      - ./reports:/app/reports
+      - ./.dvc:/app/.dvc
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: python scripts/generate_visualizations.py
+    networks:
+      - ml-network
+    depends_on:
+      - dvc-pull
+      - eda-pipeline
+      
+  # Test service - Run unit tests
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: obesity-ml-test
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./mlruns:/app/mlruns
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: pytest tests/ -v --tb=short
+    networks:
+      - ml-network
+
+  # MLflow tracking server
+  mlflow:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: obesity-ml-mlflow
+    ports:
+      - "5001:5001"
+    volumes:
+      - ./mlruns:/app/mlruns
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: mlflow ui --host 0.0.0.0 --port 5001 --backend-store-uri file:///app/mlruns
+    networks:
+      - ml-network
+
+  # Interactive shell - For development
+  shell:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: obesity-ml-shell
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./reports:/app/reports
+      - ./mlruns:/app/mlruns
+      - ./src:/app/src
+      - ./scripts:/app/scripts
+      - ./tests:/app/tests
+      - ./.dvc:/app/.dvc
+      - ./.env:/app/.env
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: bash
+    stdin_open: true
+    tty: true
+    networks:
+      - ml-network
+
+networks:
+  ml-network:
+    driver: bridge
+
+volumes:
+  data:
+  models:
+  reports:
+  mlruns:
