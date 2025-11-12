@@ -64,10 +64,6 @@ Si es tu primera vez con el proyecto, sigue este orden:
 | [scripts/run_ml.py](scripts/run_ml.py) | Entrenamiento | Pipeline DVC |
 | [scripts/run_evaluate.py](scripts/run_evaluate.py) | Evaluación | Pipeline DVC |
 | [scripts/generate_visualizations.py](scripts/generate_visualizations.py) | Visualizaciones | Pipeline DVC |
-| [scripts/dvc_push_manual.sh](scripts/dvc_push_manual.sh) | Push a S3 | Docker Compose |
-| [scripts/dvc_pull_manual.sh](scripts/dvc_pull_manual.sh) | Pull desde S3 | Docker Compose |
-| [scripts/dvc_run_and_push.sh](scripts/dvc_run_and_push.sh) | Pipeline + Push | Docker Compose |
-| [scripts/dvc_repro_and_push.sh](scripts/dvc_repro_and_push.sh) | Repro + Push | Docker Compose |
 
 ### 📊 Configuración del Pipeline
 

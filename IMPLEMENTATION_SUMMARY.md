@@ -35,14 +35,13 @@ Mejoras implementadas:
 ### 4. Docker Compose Actualizado
 Nuevos servicios:
 - **dvc-pipeline**: Servicio principal que ejecuta todo el pipeline DVC
+- **dvc-full-pipeline**: Pipeline completo + push a remote
 - **dvc-pull**: Descarga datos/modelos desde remote storage
 - **dvc-push**: Sube datos/modelos al remote storage
+- **api**: Servidor FastAPI para serving del modelo (puerto 8000)
 - **mlflow**: Servidor MLflow UI (puerto 5001)
 - **shell**: Shell interactivo para desarrollo
 - **test**: Ejecución de tests unitarios
-
-Servicios legacy mantenidos con profiles:
-- **eda-pipeline**, **ml-pipeline**, **compare**, **visualize**
 
 ### 5. Scripts de Soporte
 Scripts creados:

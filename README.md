@@ -125,6 +125,21 @@ docker-compose up -d mlflow
 # http://localhost:5001
 ```
 
+### `api`
+**🚀 NUEVO**: API de Inferencia FastAPI:
+```bash
+docker-compose up api
+# http://localhost:8000/docs
+```
+
+Endpoints disponibles:
+- `POST /predict` - Predicción individual
+- `POST /predict/batch` - Predicción por lote
+- `GET /health` - Health check
+- `GET /model/info` - Información del modelo
+
+**Ver documentación completa**: [api/README.md](api/README.md)
+
 ### `shell`
 Shell interactivo para desarrollo:
 ```bash
@@ -231,7 +246,91 @@ docker-compose up test
 
 # Ejecutar tests específicos
 docker-compose run --rm test pytest tests/test_ml_pipeline.py -v
+
+# Tests del API
+docker-compose run --rm test pytest tests/test_api.py -v
 ```
+
+## 🚀 API de Inferencia
+
+### Características
+
+El proyecto incluye una **API REST completa** construida con FastAPI para realizar predicciones en tiempo real:
+
+- ✅ **Endpoints RESTful** para predicción individual y por lote
+- ✅ **Validación automática** de entrada con Pydantic
+- ✅ **Documentación interactiva** con Swagger/OpenAPI
+- ✅ **Health checks** para monitoring
+- ✅ **Información del modelo** (versión, clases, features)
+- ✅ **Imagen Docker optimizada** (~200MB vs ~2GB del pipeline)
+
+### Inicio Rápido
+
+```bash
+# Levantar el servicio API
+docker-compose up api
+
+# Acceder a la documentación interactiva
+http://localhost:8000/docs
+```
+
+### Ejemplo de Uso
+
+```bash
+# Predicción individual
+curl -X POST "http://localhost:8000/predict" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "Gender": "Male",
+    "Age": 25.0,
+    "Height": 1.75,
+    "Weight": 85.0,
+    "family_history_with_overweight": "yes",
+    "FAVC": "yes",
+    "FCVC": 3.0,
+    "NCP": 3.0,
+    "CAEC": "Sometimes",
+    "SMOKE": "no",
+    "CH2O": 2.0,
+    "SCC": "no",
+    "FAF": 2.0,
+    "TUE": 1.0,
+    "CALC": "Sometimes",
+    "MTRANS": "Public_Transportation"
+  }'
+```
+
+**Respuesta:**
+
+```json
+{
+  "prediction": "Obesity_Type_I",
+  "prediction_label": "Obesidad Tipo I",
+  "confidence": 0.92,
+  "probabilities": {
+    "Insufficient_Weight": 0.01,
+    "Normal_Weight": 0.02,
+    "Overweight_Level_I": 0.03,
+    "Overweight_Level_II": 0.02,
+    "Obesity_Type_I": 0.92,
+    "Obesity_Type_II": 0.00,
+    "Obesity_Type_III": 0.00
+  },
+  "bmi": 27.76,
+  "timestamp": "2025-11-12T10:30:00",
+  "model_version": "v1.0"
+}
+```
+
+### Versionado del Modelo
+
+- **Modelo**: `models/best_pipeline.joblib`
+- **Versión**: `v1.0`
+- **Framework**: XGBoost + SMOTE
+- **Accuracy**: 97%
+- **Ubicación S3**: `s3://itesm-mna/202502-equipo52/dvc-storage/models/`
+
+**Documentación completa**: Ver [api/README.md](api/README.md) para más detalles sobre endpoints, schemas y ejemplos.
 
 ## 📚 Documentación Adicional
 

@@ -167,98 +167,6 @@ services:
       - ml-network
     depends_on:
       - dvc-pipeline
-
-  # ============================================================
-  # Servicios Legacy: Ejecución individual de etapas
-  # (Mantenidos para compatibilidad)
-  # ============================================================
-  
-  # EDA Pipeline - Solo análisis exploratorio
-  eda-pipeline:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: obesity-ml-eda
-    volumes:
-      - ./data:/app/data
-      - ./models:/app/models
-      - ./reports:/app/reports
-      - ./mlruns:/app/mlruns
-      - ./.dvc:/app/.dvc
-      - ./config:/app/config
-    env_file:
-      - .env
-    environment:
-      - PYTHONUNBUFFERED=1
-    command: python scripts/run_eda.py
-    networks:
-      - ml-network
-    profiles:
-      - legacy
-
-  # ML Pipeline - Solo entrenamiento
-  ml-pipeline:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: obesity-ml-train
-    volumes:
-      - ./data:/app/data
-      - ./models:/app/models
-      - ./reports:/app/reports
-      - ./mlruns:/app/mlruns
-      - ./.dvc:/app/.dvc
-      - ./config:/app/config
-    env_file:
-      - .env
-    environment:
-      - PYTHONUNBUFFERED=1
-    command: python scripts/run_ml.py
-    networks:
-      - ml-network
-    profiles:
-      - legacy
-
-  # Comparison service
-  compare:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: obesity-ml-compare
-    volumes:
-      - ./data:/app/data
-      - ./.dvc:/app/.dvc
-      - ./config:/app/config
-    env_file:
-      - .env
-    environment:
-      - PYTHONUNBUFFERED=1
-    command: python scripts/compare_datasets.py
-    networks:
-      - ml-network
-    profiles:
-      - legacy
-
-  # Visualization service
-  visualize:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: obesity-ml-visualize
-    volumes:
-      - ./data:/app/data
-      - ./reports:/app/reports
-      - ./.dvc:/app/.dvc
-      - ./config:/app/config
-    env_file:
-      - .env
-    environment:
-      - PYTHONUNBUFFERED=1
-    command: python scripts/generate_visualizations.py
-    networks:
-      - ml-network
-    profiles:
-      - legacy
       
   # ============================================================
   # Servicios Auxiliares
@@ -326,6 +234,35 @@ services:
     command: bash
     stdin_open: true
     tty: true
+    networks:
+      - ml-network
+
+  # ============================================================
+  # Servicio: API de Inferencia
+  # FastAPI service para predicciones en tiempo real
+  # ============================================================
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: obesity-ml-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./models:/app/models:ro  # Read-only para seguridad
+      - ./api:/app/api
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MODEL_PATH=models/best_pipeline.joblib
+      - METADATA_PATH=models/model_metadata.joblib
+      - DEBUG=false
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
     networks:
       - ml-network
 
