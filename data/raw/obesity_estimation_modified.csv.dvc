@@ -3,3 +3,4 @@ outs:
   size: 292930
   hash: md5
   path: obesity_estimation_modified.csv
+  isexec: true

@@ -1,7 +1,113 @@
-version: '3.8'
-
 services:
-  # DVC Service - Pull data from S3 before running pipelines
+  # ============================================================
+  # Servicio Principal: DVC Pipeline Orchestration
+  # Ejecuta el pipeline completo orquestado por DVC
+  # ============================================================
+  dvc-pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: obesity-ml-dvc-pipeline
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./reports:/app/reports
+      - ./mlruns:/app/mlruns
+      - ./.dvc:/app/.dvc
+      - ./config:/app/config
+      - ./dvc.yaml:/app/dvc.yaml
+      # dvc.lock se genera automáticamente dentro del contenedor
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DVC_NO_ANALYTICS=1
+      - MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI:-./mlruns}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
+      - DVC_REMOTE_URL=${DVC_REMOTE_URL}
+      - DVC_REMOTE_NAME=${DVC_REMOTE_NAME:-myremote}
+    command: >
+      bash -c "
+      echo '=== Iniciando Pipeline DVC ===';
+      dvc status;
+      echo '=== Ejecutando DVC Repro ===';
+      dvc repro --verbose;
+      echo '=== Pipeline completado ===';
+      dvc metrics show;
+      dvc plots show;
+      "
+    networks:
+      - ml-network
+
+  # ============================================================
+  # Servicio: Pipeline + Push - Ejecuta pipeline y sube a remote
+  # ============================================================
+  dvc-full-pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: obesity-ml-full-pipeline
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./reports:/app/reports
+      - ./mlruns:/app/mlruns
+      - ./.dvc:/app/.dvc
+      - ./config:/app/config
+      - ./dvc.yaml:/app/dvc.yaml
+      - ./scripts:/app/scripts
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DVC_NO_ANALYTICS=1
+      - MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI:-./mlruns}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
+      - DVC_REMOTE_URL=${DVC_REMOTE_URL}
+      - DVC_REMOTE_NAME=${DVC_REMOTE_NAME:-myremote}
+    command: bash scripts/dvc_run_and_push.sh
+    networks:
+      - ml-network
+
+  # ============================================================
+  # Servicio: DVC Pull - Descarga datos/modelos versionados
+  # ============================================================
+  pipeline-and-push:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: obesity-ml-pipeline-push
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./reports:/app/reports
+      - ./mlruns:/app/mlruns
+      - ./.dvc:/app/.dvc
+      - ./config:/app/config
+      - ./dvc.yaml:/app/dvc.yaml
+      - ./scripts:/app/scripts
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DVC_NO_ANALYTICS=1
+      - MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI:-./mlruns}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
+      - DVC_REMOTE_URL=${DVC_REMOTE_URL}
+      - DVC_REMOTE_NAME=${DVC_REMOTE_NAME:-myremote}
+    command: bash scripts/dvc_repro_and_push.sh
+    networks:
+      - ml-network
+
+  # ============================================================
+  # Servicio: DVC Pull - Descarga datos/modelos versionados
+  # ============================================================
   dvc-pull:
     build:
       context: .
@@ -11,16 +117,63 @@ services:
       - ./data:/app/data
       - ./models:/app/models
       - ./.dvc:/app/.dvc
-      - ./.env:/app/.env
+      - ./config:/app/config
     env_file:
       - .env
     environment:
       - PYTHONUNBUFFERED=1
-    command: dvc pull
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
+      - DVC_REMOTE_URL=${DVC_REMOTE_URL}
+      - DVC_REMOTE_NAME=${DVC_REMOTE_NAME:-myremote}
+    command: >
+      bash -c "
+      echo '=== Descargando datos con DVC ===';
+      dvc pull -v || echo 'No hay datos para descargar o remote no configurado';
+      echo '=== DVC Pull completado ===';
+      "
     networks:
       - ml-network
 
-  # Main application service - EDA Pipeline
+  # ============================================================
+  # Servicio: DVC Push - Sube datos/modelos al remote storage
+  # Usa AWS CLI directamente para evitar problemas de permisos
+  # ============================================================
+  dvc-push:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: obesity-ml-dvc-push
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./reports:/app/reports
+      - ./.dvc:/app/.dvc
+      - ./config:/app/config
+      - ./scripts:/app/scripts
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
+      - AWS_S3_BUCKET=${AWS_S3_BUCKET:-itesm-mna}
+      - DVC_REMOTE_URL=${DVC_REMOTE_URL}
+      - DVC_REMOTE_NAME=${DVC_REMOTE_NAME:-myremote}
+    command: bash scripts/dvc_push_manual.sh
+    networks:
+      - ml-network
+    depends_on:
+      - dvc-pipeline
+
+  # ============================================================
+  # Servicios Legacy: Ejecución individual de etapas
+  # (Mantenidos para compatibilidad)
+  # ============================================================
+  
+  # EDA Pipeline - Solo análisis exploratorio
   eda-pipeline:
     build:
       context: .
@@ -32,6 +185,7 @@ services:
       - ./reports:/app/reports
       - ./mlruns:/app/mlruns
       - ./.dvc:/app/.dvc
+      - ./config:/app/config
     env_file:
       - .env
     environment:
@@ -39,10 +193,10 @@ services:
     command: python scripts/run_eda.py
     networks:
       - ml-network
-    depends_on:
-      - dvc-pull
+    profiles:
+      - legacy
 
-  # ML Pipeline service - Train models
+  # ML Pipeline - Solo entrenamiento
   ml-pipeline:
     build:
       context: .
@@ -54,6 +208,7 @@ services:
       - ./reports:/app/reports
       - ./mlruns:/app/mlruns
       - ./.dvc:/app/.dvc
+      - ./config:/app/config
     env_file:
       - .env
     environment:
@@ -61,11 +216,10 @@ services:
     command: python scripts/run_ml.py
     networks:
       - ml-network
-    depends_on:
-      - dvc-pull
-      - eda-pipeline
+    profiles:
+      - legacy
 
-  # Comparison service - Validate results
+  # Comparison service
   compare:
     build:
       context: .
@@ -74,6 +228,7 @@ services:
     volumes:
       - ./data:/app/data
       - ./.dvc:/app/.dvc
+      - ./config:/app/config
     env_file:
       - .env
     environment:
@@ -81,11 +236,10 @@ services:
     command: python scripts/compare_datasets.py
     networks:
       - ml-network
-    depends_on:
-      - dvc-pull
-      - eda-pipeline
+    profiles:
+      - legacy
 
-  # Visualization service - Generate EDA plots
+  # Visualization service
   visualize:
     build:
       context: .
@@ -95,6 +249,7 @@ services:
       - ./data:/app/data
       - ./reports:/app/reports
       - ./.dvc:/app/.dvc
+      - ./config:/app/config
     env_file:
       - .env
     environment:
@@ -102,10 +257,13 @@ services:
     command: python scripts/generate_visualizations.py
     networks:
       - ml-network
-    depends_on:
-      - dvc-pull
-      - eda-pipeline
+    profiles:
+      - legacy
       
+  # ============================================================
+  # Servicios Auxiliares
+  # ============================================================
+  
   # Test service - Run unit tests
   test:
     build:
@@ -116,9 +274,10 @@ services:
       - ./data:/app/data
       - ./models:/app/models
       - ./mlruns:/app/mlruns
+      - ./config:/app/config
     environment:
       - PYTHONUNBUFFERED=1
-    command: pytest tests/ -v --tb=short
+    command: pytest tests/ -v --tb=short --cov=src --cov-report=html
     networks:
       - ml-network
 
@@ -138,7 +297,7 @@ services:
     networks:
       - ml-network
 
-  # Interactive shell - For development
+  # Interactive shell - For development and debugging
   shell:
     build:
       context: .
@@ -153,11 +312,17 @@ services:
       - ./scripts:/app/scripts
       - ./tests:/app/tests
       - ./.dvc:/app/.dvc
-      - ./.env:/app/.env
+      - ./config:/app/config
+      - ./dvc.yaml:/app/dvc.yaml
     env_file:
       - .env
     environment:
       - PYTHONUNBUFFERED=1
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
+      - DVC_REMOTE_URL=${DVC_REMOTE_URL}
+      - DVC_REMOTE_NAME=${DVC_REMOTE_NAME:-myremote}
     command: bash
     stdin_open: true
     tty: true

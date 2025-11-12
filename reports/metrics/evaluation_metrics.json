@@ -1,0 +1,6 @@
+{
+  "model_type": "XGBoost_SMOTE",
+  "accuracy": 0.9698375870069605,
+  "evaluation_completed": true,
+  "timestamp": "2025-11-12T16:23:04.422580"
+}

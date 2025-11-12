@@ -1,0 +1,64 @@
+# Docker ignore file for ML Pipeline
+# Exclude files that should not be copied to the Docker image
+
+# DVC lock file (will be generated inside container)
+dvc.lock
+*.lock
+
+# Git repository (will be initialized inside container)
+.git
+.gitignore
+.gitattributes
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+!README.md
+
+# DVC cache (too large for image)
+.dvc/cache/
+.dvc/tmp/
+
+# MLflow artifacts
+mlruns/
+
+# Large data files (managed by DVC)
+data/raw/*.csv
+!data/raw/.gitkeep
+
+# Model files (managed by DVC)
+models/*.joblib
+models/*.pkl
+!models/.gitkeep
+
+# Reports
+reports/figures/*.png
+reports/figures/*.pdf
+!reports/figures/.gitkeep
