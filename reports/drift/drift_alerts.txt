@@ -1,0 +1,48 @@
+======================================================================
+DATA DRIFT ALERTS
+======================================================================
+
+[CRITICAL] feature_drift
+  Feature 'Age' shows significant drift (PSI: 0.577)
+  PSI: 0.577
+
+[CRITICAL] feature_drift
+  Feature 'Height' shows significant drift (PSI: 1.029)
+  PSI: 1.029
+
+[CRITICAL] feature_drift
+  Feature 'Weight' shows significant drift (PSI: 0.577)
+  PSI: 0.577
+
+[WARNING] feature_drift
+  Feature 'FCVC' shows significant drift (PSI: 0.387)
+  PSI: 0.387
+
+[WARNING] feature_drift
+  Feature 'NCP' distribution changed significantly (KS p-value: 0.0000)
+
+[WARNING] feature_drift
+  Feature 'CH2O' distribution changed significantly (KS p-value: 0.0000)
+
+[WARNING] feature_drift
+  Feature 'FAF' distribution changed significantly (KS p-value: 0.0000)
+
+[WARNING] feature_drift
+  Feature 'TUE' distribution changed significantly (KS p-value: 0.0000)
+
+[CRITICAL] performance_degradation
+  Critical degradation in accuracy: 34.13% drop
+  Degradation: 34.13%
+
+[CRITICAL] performance_degradation
+  Critical degradation in precision: 29.93% drop
+  Degradation: 29.93%
+
+[CRITICAL] performance_degradation
+  Critical degradation in recall: 34.13% drop
+  Degradation: 34.13%
+
+[CRITICAL] performance_degradation
+  Critical degradation in f1: 37.15% drop
+  Degradation: 37.15%
+
