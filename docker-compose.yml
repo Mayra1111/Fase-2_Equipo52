@@ -122,6 +122,69 @@ services:
     networks:
       - ml-network
 
+  # Drift simulation service - Generate dataset with simulated drift
+  simulate-drift:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: obesity-ml-simulate-drift
+    volumes:
+      - ./data:/app/data
+      - ./reports:/app/reports
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: python scripts/simulate_drift.py
+    networks:
+      - ml-network
+    depends_on:
+      - dvc-pull
+      - eda-pipeline
+
+  # Drift detection service - Detect and report data drift
+  detect-drift:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: obesity-ml-detect-drift
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./reports:/app/reports
+      - ./mlruns:/app/mlruns
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: python scripts/detect_drift.py
+    networks:
+      - ml-network
+    depends_on:
+      - dvc-pull
+      - eda-pipeline
+      - ml-pipeline
+      - simulate-drift
+
+  # Drift visualization service - Generate drift visualizations
+  visualize-drift:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: obesity-ml-visualize-drift
+    volumes:
+      - ./data:/app/data
+      - ./reports:/app/reports
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: python scripts/visualize_drift.py
+    networks:
+      - ml-network
+    depends_on:
+      - detect-drift
+
   # MLflow tracking server
   mlflow:
     build:
