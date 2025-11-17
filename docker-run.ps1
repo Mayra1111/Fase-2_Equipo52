@@ -19,10 +19,8 @@ USAGE:
 
 COMMANDS:
 
-  DVC ORCHESTRATED PIPELINES (NEW - choose one):
-    dvc-basic     DVC ML pipeline only (5 stages, 10-15 min)
-    dvc-drift     DVC ML + drift detection (8 stages, 15-20 min)
-    dvc-mlflow    DVC ML + MLflow tracking (5 stages, 10-15 min)
+  DVC PIPELINE:
+    dvc           Run complete DVC pipeline (9 stages, 15-20 min)
 
   MANUAL PIPELINE COMMANDS:
     eda           Run the EDA pipeline (data cleaning)
@@ -47,14 +45,8 @@ COMMANDS:
 
 EXAMPLES:
 
-  # Run DVC basic pipeline (no drift)
-  .\docker-run.ps1 dvc-basic
-
-  # Run DVC pipeline with drift detection
-  .\docker-run.ps1 dvc-drift
-
-  # Run DVC pipeline with MLflow experiment tracking
-  .\docker-run.ps1 dvc-mlflow
+  # Run DVC pipeline (includes all stages: EDA, ML, drift detection, testing)
+  .\docker-run.ps1 dvc
 
   # Run complete workflow (manual stages)
   .\docker-run.ps1 all
@@ -79,30 +71,26 @@ EXAMPLES:
 
 # Execute based on command
 switch ($Command.ToLower()) {
-    "dvc-basic" {
-        Write-Host "Running DVC basic pipeline (ML only)..." -ForegroundColor Blue
-        Write-Host "Stages: EDA > Preprocess > Train > Evaluate > Visualize" -ForegroundColor Yellow
+    "dvc" {
+        Write-Host "Running DVC pipeline (complete workflow)..." -ForegroundColor Blue
+        Write-Host "Stages:" -ForegroundColor Yellow
+        Write-Host "  1. EDA - Exploratory Data Analysis" -ForegroundColor Yellow
+        Write-Host "  2. Preprocess - Feature engineering, scaling" -ForegroundColor Yellow
+        Write-Host "  3. Train - Model training with cross-validation" -ForegroundColor Yellow
+        Write-Host "  4. Evaluate - Model evaluation and metrics" -ForegroundColor Yellow
+        Write-Host "  5. Visualize - Report and visualization generation" -ForegroundColor Yellow
+        Write-Host "  6. simulate_drift - Synthetic data drift creation" -ForegroundColor Yellow
+        Write-Host "  7. detect_drift - Data drift detection" -ForegroundColor Yellow
+        Write-Host "  8. visualize_drift - Drift analysis visualizations" -ForegroundColor Yellow
+        Write-Host "  9. test - Unit tests with coverage" -ForegroundColor Yellow
+        Write-Host ""
         docker-compose run --rm dvc-pipeline-basic
         if ($LASTEXITCODE -eq 0) {
-            Write-Host "DVC basic pipeline complete! (10-15 min)" -ForegroundColor Green
-        }
-    }
-    "dvc-drift" {
-        Write-Host "Running DVC drift pipeline (ML + drift detection)..." -ForegroundColor Blue
-        Write-Host "Stages: [Basic] + Simulate Drift > Detect Drift > Visualize Drift" -ForegroundColor Yellow
-        docker-compose run --rm dvc-pipeline-drift
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "DVC drift pipeline complete! (15-20 min)" -ForegroundColor Green
-            Write-Host "Check drift alerts: cat reports/drift/drift_alerts.txt" -ForegroundColor Yellow
-        }
-    }
-    "dvc-mlflow" {
-        Write-Host "Running DVC MLflow pipeline (ML + experiment tracking)..." -ForegroundColor Blue
-        Write-Host "Stages: EDA > Preprocess > Train [logged] > Evaluate [logged] > Visualize" -ForegroundColor Yellow
-        docker-compose run --rm dvc-pipeline-mlflow
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "DVC MLflow pipeline complete! (10-15 min)" -ForegroundColor Green
-            Write-Host "To view experiments, run: .\docker-run.ps1 mlflow" -ForegroundColor Yellow
+            Write-Host "DVC pipeline complete! (15-20 min)" -ForegroundColor Green
+            Write-Host "Check results:" -ForegroundColor Yellow
+            Write-Host "  - Metrics: cat reports/metrics/evaluation_metrics.json" -ForegroundColor Yellow
+            Write-Host "  - Drift alerts: cat reports/drift/drift_alerts.txt" -ForegroundColor Yellow
+            Write-Host "  - Visualizations: open reports/figures/" -ForegroundColor Yellow
         }
     }
     "eda" {

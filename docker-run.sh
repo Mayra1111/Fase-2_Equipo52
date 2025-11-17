@@ -32,10 +32,8 @@ USAGE:
 
 COMMANDS:
 
-  DVC ORCHESTRATED PIPELINES (NEW - choose one):
-    dvc-basic     DVC ML pipeline only (5 stages, 10-15 min)
-    dvc-drift     DVC ML + drift detection (8 stages, 15-20 min)
-    dvc-mlflow    DVC ML + MLflow tracking (5 stages, 10-15 min)
+  DVC PIPELINE:
+    dvc           Run complete DVC pipeline (9 stages, 15-20 min)
 
   MANUAL PIPELINE COMMANDS:
     eda           Run the EDA pipeline (data cleaning)
@@ -60,14 +58,8 @@ COMMANDS:
 
 EXAMPLES:
 
-  # Run DVC basic pipeline (no drift)
-  ./docker-run.sh dvc-basic
-
-  # Run DVC pipeline with drift detection
-  ./docker-run.sh dvc-drift
-
-  # Run DVC pipeline with MLflow experiment tracking
-  ./docker-run.sh dvc-mlflow
+  # Run DVC pipeline (includes all stages: EDA, ML, drift detection, testing)
+  ./docker-run.sh dvc
 
   # Run EDA pipeline (manual)
   ./docker-run.sh eda
@@ -93,7 +85,7 @@ EXAMPLES:
   # Clean everything and start fresh
   ./docker-run.sh clean
   ./docker-run.sh build
-  ./docker-run.sh dvc-basic
+  ./docker-run.sh dvc
 
 EOF
 }
@@ -105,29 +97,27 @@ build_images() {
     print_message "$GREEN" "✅ Build complete!"
 }
 
-# DVC Pipeline functions
+# DVC Pipeline function
 
-run_dvc_basic() {
-    print_message "$BLUE" "🚀 Running DVC basic pipeline (ML only)..."
-    print_message "$YELLOW" "Stages: EDA → Preprocess → Train → Evaluate → Visualize"
+run_dvc() {
+    print_message "$BLUE" "🚀 Running DVC pipeline (complete workflow)..."
+    print_message "$YELLOW" "Stages:"
+    print_message "$YELLOW" "  1. EDA - Exploratory Data Analysis"
+    print_message "$YELLOW" "  2. Preprocess - Feature engineering, scaling"
+    print_message "$YELLOW" "  3. Train - Model training with cross-validation"
+    print_message "$YELLOW" "  4. Evaluate - Model evaluation and metrics"
+    print_message "$YELLOW" "  5. Visualize - Report and visualization generation"
+    print_message "$YELLOW" "  6. simulate_drift - Synthetic data drift creation"
+    print_message "$YELLOW" "  7. detect_drift - Data drift detection"
+    print_message "$YELLOW" "  8. visualize_drift - Drift analysis visualizations"
+    print_message "$YELLOW" "  9. test - Unit tests with coverage"
+    echo ""
     docker-compose run --rm dvc-pipeline-basic
-    print_message "$GREEN" "✅ DVC basic pipeline complete! (10-15 min)"
-}
-
-run_dvc_drift() {
-    print_message "$BLUE" "🚀 Running DVC drift pipeline (ML + drift detection)..."
-    print_message "$YELLOW" "Stages: [Basic] + Simulate Drift → Detect Drift → Visualize Drift"
-    docker-compose run --rm dvc-pipeline-drift
-    print_message "$GREEN" "✅ DVC drift pipeline complete! (15-20 min)"
-    print_message "$YELLOW" "Check drift alerts: cat reports/drift/drift_alerts.txt"
-}
-
-run_dvc_mlflow() {
-    print_message "$BLUE" "🚀 Running DVC MLflow pipeline (ML + experiment tracking)..."
-    print_message "$YELLOW" "Stages: EDA → Preprocess → Train [logged] → Evaluate [logged] → Visualize"
-    docker-compose run --rm dvc-pipeline-mlflow
-    print_message "$GREEN" "✅ DVC MLflow pipeline complete! (10-15 min)"
-    print_message "$YELLOW" "To view experiments, run: ./docker-run.sh mlflow"
+    print_message "$GREEN" "✅ DVC pipeline complete! (15-20 min)"
+    print_message "$YELLOW" "Check results:"
+    print_message "$YELLOW" "  - Metrics: cat reports/metrics/evaluation_metrics.json"
+    print_message "$YELLOW" "  - Drift alerts: cat reports/drift/drift_alerts.txt"
+    print_message "$YELLOW" "  - Visualizations: open reports/figures/"
 }
 
 # Manual Pipeline functions
@@ -234,14 +224,8 @@ clean_all() {
 
 # Main script logic
 case "${1:-help}" in
-    dvc-basic)
-        run_dvc_basic
-        ;;
-    dvc-drift)
-        run_dvc_drift
-        ;;
-    dvc-mlflow)
-        run_dvc_mlflow
+    dvc)
+        run_dvc
         ;;
     eda)
         run_eda

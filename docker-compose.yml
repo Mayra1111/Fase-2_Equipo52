@@ -10,12 +10,12 @@ services:
   # ============================================================================
 
   # ============================================================================
-  # THREE DVC PIPELINE OPTIONS ⭐ NEW
+  # DVC PIPELINE (UNIFIED - includes all functionality)
   # ============================================================================
 
-  # DVC Pipeline 1: BASIC (Without Drift Detection)
-  # Runs: EDA → Preprocess → Train → Evaluate → Visualize
-  # Execute with: docker-compose run dvc-pipeline-basic
+  # DVC Pipeline - UNIFIED (All 9 stages)
+  # Runs: EDA → Preprocess → Train → Evaluate → Visualize → simulate_drift → detect_drift → visualize_drift → test
+  # Execute with: docker-compose run dvc-pipeline-basic OR ./docker-run.sh dvc
   dvc-pipeline-basic:
     build:
       context: .
