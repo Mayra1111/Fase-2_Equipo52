@@ -408,6 +408,6 @@ pytest tests/ -v
 
 ---
 
-**Merge completado exitosamente en rama `ali`**
+**Merge completado exitosamente en rama `eze`**
 
 Estado: ✅ Listo para testing y deployment
