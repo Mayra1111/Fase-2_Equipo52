@@ -9,7 +9,7 @@ services:
   # DATA PIPELINE SERVICES
   # ============================================================================
 
-  # DVC Pipeline Orchestrator - Runs complete pipeline via DVC
+  # DVC Pipeline Orchestrator - Runs ML pipeline only (without drift detection)
   # Execute all stages in correct order with: docker-compose run dvc-pipeline
   dvc-pipeline:
     build:
@@ -28,11 +28,63 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - DVC_NO_ANALYTICS=1
+    command: dvc repro --single-item evaluate
+    networks:
+      - ml-network
+    profiles:
+      - pipeline
+
+  # DVC Full Pipeline Orchestrator - Runs complete pipeline including drift detection
+  # Execute all stages (ML + drift) with: docker-compose run dvc-full-pipeline
+  dvc-full-pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: obesity-ml-dvc-full-orchestrator
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./reports:/app/reports
+      - ./mlruns:/app/mlruns
+      - ./.dvc:/app/.dvc
+      - ./.git:/app/.git
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DVC_NO_ANALYTICS=1
     command: dvc repro
     networks:
       - ml-network
     profiles:
       - pipeline
+
+  # DVC Drift-Only Pipeline - Runs drift detection stages only (simulate, detect, visualize)
+  # Requires trained model. Execute with: docker-compose run dvc-drift-pipeline
+  dvc-drift-pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: obesity-ml-dvc-drift-orchestrator
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./reports:/app/reports
+      - ./mlruns:/app/mlruns
+      - ./.dvc:/app/.dvc
+      - ./.git:/app/.git
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DVC_NO_ANALYTICS=1
+    command: dvc repro --single-item visualize_drift
+    networks:
+      - ml-network
+    profiles:
+      - drift
+    depends_on:
+      - dvc-pull
 
   # DVC Pull - Fetch data/models from remote storage
   dvc-pull:
@@ -150,10 +202,13 @@ services:
       - manual
 
   # ============================================================================
-  # DRIFT DETECTION SERVICES
+  # DRIFT DETECTION SERVICES (Manual - Alternative to DVC Orchestration)
   # ============================================================================
+  # Note: For automated drift detection via DVC, use 'dvc-drift-pipeline' service above
+  # These services allow manual control over individual drift detection steps
 
-  # Drift Simulation - Generate synthetic drifted dataset
+  # Drift Simulation - Generate synthetic drifted dataset (Manual)
+  # Alternative: docker-compose run dvc-drift-pipeline (uses DVC orchestration)
   simulate-drift:
     build:
       context: .
@@ -172,9 +227,10 @@ services:
     depends_on:
       - dvc-pull
     profiles:
-      - drift
+      - drift-manual
 
-  # Drift Detection - Detect data drift and generate alerts
+  # Drift Detection - Detect data drift and generate alerts (Manual)
+  # Alternative: docker-compose run dvc-drift-pipeline (uses DVC orchestration)
   detect-drift:
     build:
       context: .
@@ -195,9 +251,10 @@ services:
     depends_on:
       - simulate-drift
     profiles:
-      - drift
+      - drift-manual
 
-  # Drift Visualization - Generate drift analysis plots
+  # Drift Visualization - Generate drift analysis plots (Manual)
+  # Alternative: docker-compose run dvc-drift-pipeline (uses DVC orchestration)
   visualize-drift:
     build:
       context: .
@@ -216,7 +273,7 @@ services:
     depends_on:
       - detect-drift
     profiles:
-      - drift
+      - drift-manual
 
   # ============================================================================
   # TESTING SERVICES
