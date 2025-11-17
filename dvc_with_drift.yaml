@@ -161,5 +161,15 @@ stages:
           cache: false
     desc: "Generación de visualizaciones para análisis de data drift"
 
+  # Stage 9: Unit Tests
+  test:
+    cmd: pytest tests/ -v --tb=short --cov=src
+    deps:
+      - tests/
+      - src/
+      - scripts/
+      - config/params.yaml
+    desc: "Ejecución de pruebas unitarias con cobertura de código"
+
 vars:
   - config/params.yaml
