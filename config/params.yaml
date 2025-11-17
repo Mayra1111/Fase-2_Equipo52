@@ -1,0 +1,86 @@
+# DVC Pipeline Parameters - Obesity Classification Project
+# This file defines all parameters used in the DVC pipeline stages
+
+# Data paths and configuration
+data:
+  raw_path: "data/raw/obesity_estimation_modified.csv"
+  interim_path: "data/interim/dataset_limpio_refactored.csv"
+  processed_path: "data/processed/dataset_final.csv"
+  test_size: 0.2
+  random_state: 42
+
+# Preprocessing configuration
+preprocessing:
+  create_bmi: true
+  handle_outliers: true
+  scale_features: true
+  outlier_method: "iqr"  # Options: "iqr", "zscore"
+  iqr_multiplier: 1.5
+
+# Model configuration
+models:
+  output_dir: "models"
+  algorithms:
+    - random_forest
+    - xgboost
+    - knn
+    - svm
+  random_forest:
+    n_estimators: 200
+    max_depth: 10
+    random_state: 42
+  xgboost:
+    n_estimators: 200
+    max_depth: 5
+    learning_rate: 0.1
+    random_state: 42
+  knn:
+    n_neighbors: 5
+  svm:
+    kernel: "linear"
+    C: 1.0
+
+# Training configuration
+training:
+  cross_validation: true
+  cv_folds: 5
+  scoring: "f1_weighted"
+  random_search_iterations: 20
+  random_state: 42
+
+# Evaluation configuration
+evaluation:
+  metrics:
+    - accuracy
+    - precision
+    - recall
+    - f1
+    - roc_auc
+  generate_plots: true
+  confusion_matrix: true
+
+# Reports configuration
+reports:
+  figures_dir: "reports/figures"
+  metrics_dir: "reports/metrics"
+  format: "png"
+  dpi: 300
+
+# MLflow configuration
+mlflow:
+  experiment_name: "Clasificacion_Niveles_Obesidad"
+  tracking_uri: "file:./mlruns"
+  run_name: "dvc_pipeline_run"
+
+# Drift detection configuration
+drift:
+  baseline_version: "v1.0.0"
+  psi_threshold: 0.25
+  ks_threshold: 0.1
+  output_dir: "reports/drift"
+  alert_threshold: 0.5
+
+# Logging configuration
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
