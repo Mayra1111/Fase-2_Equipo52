@@ -9,7 +9,7 @@ entry_points:
       output_path: {type: string, default: "data/interim/dataset_limpio_refactored.csv"}
       use_mlflow: {type: string, default: "true"}
     command: "python scripts/run_eda.py --input {input_path} --output {output_path}"
-  
+
   ml:
     parameters:
       input_path: {type: string, default: "data/interim/dataset_limpio_refactored.csv"}
@@ -17,18 +17,27 @@ entry_points:
       experiment: {type: string, default: "Clasificacion_Niveles_Obesidad"}
       use_mlflow: {type: string, default: "true"}
     command: "python scripts/run_ml.py --input {input_path} --output {output_dir} --experiment {experiment}"
-  
+
   visualize:
     parameters:
       input_path: {type: string, default: "data/interim/dataset_limpio_refactored.csv"}
       output_dir: {type: string, default: "reports/figures/"}
     command: "python scripts/generate_visualizations.py --input {input_path} --output-dir {output_dir}"
-  
+
   compare:
     command: "python scripts/compare_datasets.py"
-  
+
+  simulate_drift:
+    command: "python scripts/simulate_drift.py"
+
+  detect_drift:
+    command: "python scripts/detect_drift.py"
+
+  visualize_drift:
+    command: "python scripts/visualize_drift.py"
+
   test:
     command: "pytest tests/ -v"
-  
+
   main:
     command: "python scripts/run_eda.py && python scripts/run_ml.py"

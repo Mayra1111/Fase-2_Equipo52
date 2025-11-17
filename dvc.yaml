@@ -1,0 +1,166 @@
+# DVC Pipeline para Proyecto de Clasificación de Obesidad
+# Orquesta el flujo completo: EDA -> Preprocesamiento -> Entrenamiento -> Evaluación
+# Utiliza los parámetros definidos en config/params.yaml
+
+stages:
+  # Stage 1: Análisis Exploratorio de Datos (EDA)
+  eda:
+    cmd: python scripts/run_eda.py --input ${data.raw_path} --output ${data.interim_path}
+    deps:
+      - scripts/run_eda.py
+      - data/raw/obesity_estimation_modified.csv
+      - pipelines/eda_pipeline.py
+      - src/data/data_loader.py
+      - src/data/data_cleaner.py
+    params:
+      - config/params.yaml:
+          - data.raw_path
+          - data.interim_path
+          - data.random_state
+    outs:
+      - ${data.interim_path}:
+          cache: true
+          persist: true
+    desc: "Limpieza y análisis exploratorio de datos, generación de dataset limpio"
+
+  # Stage 2: Preprocesamiento y creación de features
+  preprocess:
+    cmd: python scripts/run_preprocess.py
+    deps:
+      - scripts/run_preprocess.py
+      - ${data.interim_path}
+      - pipelines/ml_pipeline.py
+      - src/models/data_preprocessor.py
+      - config/params.yaml
+    params:
+      - config/params.yaml:
+          - data.interim_path
+          - data.test_size
+          - data.random_state
+          - preprocessing.create_bmi
+          - preprocessing.handle_outliers
+          - preprocessing.scale_features
+    desc: "Preprocesamiento de datos, feature engineering (BMI), encoding y scaling"
+
+  # Stage 3: Entrenamiento de modelos
+  train:
+    cmd: python scripts/run_ml.py --input ${data.interim_path} --output ${models.output_dir} --experiment ${mlflow.experiment_name}
+    deps:
+      - scripts/run_ml.py
+      - ${data.interim_path}
+      - pipelines/ml_pipeline.py
+      - src/models/data_preprocessor.py
+      - src/models/model_trainer.py
+      - config/params.yaml
+    params:
+      - config/params.yaml:
+          - data.interim_path
+          - data.test_size
+          - data.random_state
+          - models.output_dir
+          - models.algorithms
+          - training.cross_validation
+          - training.cv_folds
+          - training.scoring
+          - mlflow.experiment_name
+    outs:
+      - ${models.output_dir}/best_pipeline.joblib:
+          cache: true
+          persist: true
+      - ${models.output_dir}/model_metadata.joblib:
+          cache: true
+          persist: true
+    desc: "Entrenamiento de múltiples modelos, selección del mejor con validación cruzada"
+
+  # Stage 4: Evaluación del modelo
+  evaluate:
+    cmd: python scripts/run_evaluate.py
+    deps:
+      - scripts/run_evaluate.py
+      - ${models.output_dir}/best_pipeline.joblib
+      - ${models.output_dir}/model_metadata.joblib
+      - config/params.yaml
+    params:
+      - config/params.yaml:
+          - evaluation.metrics
+          - evaluation.generate_plots
+          - evaluation.confusion_matrix
+    outs:
+      - reports/metrics/evaluation_metrics.json:
+          cache: false
+    desc: "Evaluación del mejor modelo en datos de prueba, generación de métricas y gráficos"
+
+  # Stage 5: Generación de visualizaciones finales
+  visualize:
+    cmd: python scripts/generate_visualizations.py --input ${data.interim_path} --output-dir ${reports.figures_dir}
+    deps:
+      - scripts/generate_visualizations.py
+      - ${data.interim_path}
+      - src/visualization/eda_visualizer.py
+    params:
+      - config/params.yaml:
+          - data.interim_path
+          - reports.figures_dir
+          - reports.format
+          - reports.dpi
+    outs:
+      - reports/figures/01_dataset_overview.png:
+          cache: false
+      - reports/figures/02_numeric_distributions.png:
+          cache: false
+      - reports/figures/06_correlation_matrix.png:
+          cache: false
+    desc: "Generación de visualizaciones y reportes finales del proyecto"
+
+  # Stage 6: Simulación de drift (Opcional - para testing)
+  simulate_drift:
+    cmd: python scripts/simulate_drift.py
+    deps:
+      - scripts/simulate_drift.py
+      - ${data.interim_path}
+      - src/utils/config.py
+      - src/utils/logger.py
+    outs:
+      - data/interim/dataset_with_drift.csv:
+          cache: true
+    desc: "Simula data drift modificando distribuciones del dataset base"
+
+  # Stage 7: Detección de drift
+  detect_drift:
+    cmd: python scripts/detect_drift.py
+    deps:
+      - scripts/detect_drift.py
+      - ${data.interim_path}
+      - data/interim/dataset_with_drift.csv
+      - ${models.output_dir}/best_pipeline.joblib
+      - ${models.output_dir}/model_metadata.joblib
+      - src/monitoring/drift_detector.py
+      - src/models/data_preprocessor.py
+    outs:
+      - reports/drift/drift_report.json:
+          cache: false
+      - reports/drift/drift_alerts.txt:
+          cache: false
+    desc: "Detección de data drift comparando baseline con dataset driftado"
+
+  # Stage 8: Visualización de drift
+  visualize_drift:
+    cmd: python scripts/visualize_drift.py
+    deps:
+      - scripts/visualize_drift.py
+      - ${data.interim_path}
+      - data/interim/dataset_with_drift.csv
+      - reports/drift/drift_report.json
+      - src/utils/config.py
+    outs:
+      - reports/figures/10_drift_distributions.png:
+          cache: false
+      - reports/figures/11_drift_performance_comparison.png:
+          cache: false
+      - reports/figures/12_drift_psi_heatmap.png:
+          cache: false
+    desc: "Generación de visualizaciones para análisis de data drift"
+
+# Configuración adicional
+vars:
+  - config/params.yaml
