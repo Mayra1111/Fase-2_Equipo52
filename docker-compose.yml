@@ -398,7 +398,7 @@ services:
       dockerfile: Dockerfile
     container_name: obesity-ml-api
     ports:
-      - "8000:8000"
+      - "8001:8000"
     volumes:
       - ./models:/app/models:ro
       - ./mlruns:/app/mlruns:ro
