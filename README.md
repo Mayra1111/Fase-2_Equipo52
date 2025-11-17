@@ -269,86 +269,206 @@ docker-compose run --rm test pytest tests/test_ml_pipeline.py -v
 docker-compose run --rm test pytest tests/test_api.py -v
 ```
 
-## 🚀 API de Inferencia
+## 🚀 API de Inferencia (FastAPI)
 
 ### Características
 
-El proyecto incluye una **API REST completa** construida con FastAPI para realizar predicciones en tiempo real:
+El proyecto incluye una **API REST completa** construida con **FastAPI** para realizar predicciones en tiempo real:
 
-- ✅ **Endpoints RESTful** para predicción individual y por lote
+- ✅ **Endpoints RESTful** para predicción individual (`POST /predict`) y por lote (`POST /predict/batch`)
 - ✅ **Validación automática** de entrada con Pydantic
-- ✅ **Documentación interactiva** con Swagger/OpenAPI
-- ✅ **Health checks** para monitoring
-- ✅ **Información del modelo** (versión, clases, features)
-- ✅ **Imagen Docker optimizada** (~200MB vs ~2GB del pipeline)
+- ✅ **Documentación interactiva** con Swagger/OpenAPI en `/docs`
+- ✅ **Health checks** para monitoring en `GET /health`
+- ✅ **Información del modelo** en `GET /model/info`
+- ✅ **Handling de errores** robusto con respuestas JSON
+- ✅ **CORS habilitado** para acceso desde cualquier origen
+- ✅ **Logging completo** de predicciones
 
 ### Inicio Rápido
 
 ```bash
-# Levantar el servicio API
+# Opción 1: Levantar el servicio API con Docker Compose
 docker-compose up api
 
-# Acceder a la documentación interactiva
-http://localhost:8000/docs
+# Opción 2: Ejecutar localmente (si tienes las dependencias instaladas)
+cd Fase-2_Equipo52
+pip install -r requirements.txt
+uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### Ejemplo de Uso
+**Acceder a la API:**
+- Documentación Swagger: http://localhost:8000/docs
+- Documentación ReDoc: http://localhost:8000/redoc
+- API raíz: http://localhost:8000/
+
+### Endpoints Disponibles
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| `GET` | `/` | Información de la API |
+| `GET` | `/health` | Health check del servicio |
+| `GET` | `/model/info` | Información del modelo (versión, accuracy, clases) |
+| `POST` | `/predict` | Predicción individual |
+| `POST` | `/predict/batch` | Predicción por lote (múltiples muestras) |
+
+### Ejemplo de Uso: Predicción Individual
 
 ```bash
-# Predicción individual
 curl -X POST "http://localhost:8000/predict" \
   -H "Content-Type: application/json" \
   -d '{
-    "Gender": "Male",
     "Age": 25.0,
     "Height": 1.75,
     "Weight": 85.0,
-    "family_history_with_overweight": "yes",
-    "FAVC": "yes",
-    "FCVC": 3.0,
+    "Gender": "Male",
+    "FCVC": 2.0,
     "NCP": 3.0,
     "CAEC": "Sometimes",
-    "SMOKE": "no",
-    "CH2O": 2.0,
-    "SCC": "no",
-    "FAF": 2.0,
+    "CH2O": 2.5,
+    "FAF": 1.5,
     "TUE": 1.0,
-    "CALC": "Sometimes",
-    "MTRANS": "Public_Transportation"
+    "MTRANS": "Automobile",
+    "family_history_with_overweight": "yes",
+    "FAVC": "no",
+    "SCC": "no"
   }'
+```
+
+**Respuesta esperada:**
+
+```json
+{
+  "prediction": "Overweight_Level_II",
+  "confidence": null,
+  "features_received": {
+    "Age": 25.0,
+    "Height": 1.75,
+    "Weight": 85.0,
+    "Gender": "Male",
+    "FCVC": 2.0,
+    "NCP": 3.0,
+    "CAEC": "Sometimes",
+    "CH2O": 2.5,
+    "FAF": 1.5,
+    "TUE": 1.0,
+    "MTRANS": "Automobile",
+    "family_history_with_overweight": "yes",
+    "FAVC": "no",
+    "SCC": "no"
+  },
+  "model_name": "XGBoost_SMOTE",
+  "model_version": "1.0.0"
+}
+```
+
+### Ejemplo: Predicción Batch
+
+```bash
+curl -X POST "http://localhost:8000/predict/batch" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "samples": [
+      {
+        "Age": 25.0,
+        "Height": 1.75,
+        "Weight": 85.0,
+        "Gender": "Male",
+        "FCVC": 2.0,
+        "NCP": 3.0,
+        "CAEC": "Sometimes",
+        "CH2O": 2.5,
+        "FAF": 1.5,
+        "TUE": 1.0,
+        "MTRANS": "Automobile",
+        "family_history_with_overweight": "yes",
+        "FAVC": "no",
+        "SCC": "no"
+      }
+    ]
+  }'
+```
+
+### Health Check
+
+```bash
+curl http://localhost:8000/health
 ```
 
 **Respuesta:**
 
 ```json
 {
-  "prediction": "Obesity_Type_I",
-  "prediction_label": "Obesidad Tipo I",
-  "confidence": 0.92,
-  "probabilities": {
-    "Insufficient_Weight": 0.01,
-    "Normal_Weight": 0.02,
-    "Overweight_Level_I": 0.03,
-    "Overweight_Level_II": 0.02,
-    "Obesity_Type_I": 0.92,
-    "Obesity_Type_II": 0.00,
-    "Obesity_Type_III": 0.00
-  },
-  "bmi": 27.76,
-  "timestamp": "2025-11-12T10:30:00",
-  "model_version": "v1.0"
+  "status": "healthy",
+  "model_loaded": true,
+  "version": "1.0.0",
+  "timestamp": "2024-01-15T10:30:00.123456"
 }
 ```
 
-### Versionado del Modelo
+### Información del Modelo
 
-- **Modelo**: `models/best_pipeline.joblib`
-- **Versión**: `v1.0`
-- **Framework**: XGBoost + SMOTE
-- **Accuracy**: 97%
-- **Ubicación S3**: `s3://itesm-mna/202502-equipo52/dvc-storage/models/`
+```bash
+curl http://localhost:8000/model/info
+```
 
-**Documentación completa**: Ver [api/README.md](api/README.md) para más detalles sobre endpoints, schemas y ejemplos.
+**Respuesta:**
+
+```json
+{
+  "model_name": "XGBoost_SMOTE",
+  "model_version": "1.0.0",
+  "accuracy": 0.975,
+  "classes": [
+    "Insufficient_Weight",
+    "Normal_Weight",
+    "Overweight_Level_I",
+    "Overweight_Level_II",
+    "Obesity_Type_I",
+    "Obesity_Type_II",
+    "Obesity_Type_III"
+  ],
+  "features_required": 13,
+  "deployment_date": "2024-01-15"
+}
+```
+
+### Versionado del Modelo y Artefactos
+
+```
+Modelo guardado en:
+  models/best_pipeline.joblib (artefacto principal)
+  models/model_metadata.joblib (metadata)
+
+Información de versión:
+  Versión del modelo: v1.0.0
+  Framework: XGBoost + SMOTE
+  Accuracy: ~97%
+  Test size: 20%
+```
+
+### Schema de Validación (Pydantic)
+
+El endpoint `/predict` valida automáticamente:
+
+```python
+class ObesityFeatures(BaseModel):
+    Age: float  # 14-100 años
+    Height: float  # 1.0-2.5 metros
+    Weight: float  # 20-200 kg
+    Gender: str  # "Female" o "Male"
+    FCVC: float  # 1-3 (Frecuencia consumo verduras)
+    NCP: float  # 1-4 (Número comidas principales)
+    CAEC: str  # "no", "Sometimes", "Frequently", "Always"
+    CH2O: float  # 1-3 (Consumo agua diario)
+    FAF: float  # 0-3 (Frecuencia actividad física)
+    TUE: float  # 0-2 (Tiempo usando tecnología)
+    MTRANS: str  # Tipo de transporte
+    family_history_with_overweight: str  # "yes" o "no"
+    FAVC: str  # "yes" o "no" (Comida calórica frecuente)
+    SCC: str  # "yes" o "no" (Bebidas calóricas)
+```
+
+Errores de validación retornan `HTTP 422` con detalles específicos.
 
 ## 🔍 Data Drift Detection
 
