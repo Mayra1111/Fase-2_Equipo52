@@ -33,7 +33,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - DVC_NO_ANALYTICS=1
-    command: dvc repro -f dvc_basic.yaml
+    command: dvc repro dvc_basic.yaml
     networks:
       - ml-network
     profiles:
@@ -59,7 +59,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - DVC_NO_ANALYTICS=1
-    command: dvc repro -f dvc_with_drift.yaml
+    command: dvc repro dvc_with_drift.yaml
     networks:
       - ml-network
     profiles:
@@ -88,7 +88,7 @@ services:
       - PYTHONUNBUFFERED=1
       - DVC_NO_ANALYTICS=1
       - MLFLOW_TRACKING_URI=file:///app/mlruns
-    command: dvc repro -f dvc_with_mlflow.yaml
+    command: dvc repro dvc_with_mlflow.yaml
     networks:
       - ml-network
     profiles:
@@ -117,7 +117,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - DVC_NO_ANALYTICS=1
-    command: dvc repro -f dvc_basic.yaml
+    command: dvc repro dvc_basic.yaml
     networks:
       - ml-network
     profiles:
@@ -142,7 +142,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - DVC_NO_ANALYTICS=1
-    command: dvc repro -f dvc_with_drift.yaml
+    command: dvc repro dvc_with_drift.yaml
     networks:
       - ml-network
     profiles:
