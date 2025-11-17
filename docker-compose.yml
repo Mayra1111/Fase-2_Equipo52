@@ -1,7 +1,40 @@
 version: '3.8'
 
+# Hybrid Docker Compose Configuration
+# Combines DVC pipeline orchestration with modular service architecture
+# Supports: dvc repro (orchestrated), individual services, and interactive development
+
 services:
-  # DVC Service - Pull data from S3 before running pipelines
+  # ============================================================================
+  # DATA PIPELINE SERVICES
+  # ============================================================================
+
+  # DVC Pipeline Orchestrator - Runs complete pipeline via DVC
+  # Execute all stages in correct order with: docker-compose run dvc-pipeline
+  dvc-pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: obesity-ml-dvc-orchestrator
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./reports:/app/reports
+      - ./mlruns:/app/mlruns
+      - ./.dvc:/app/.dvc
+      - ./.git:/app/.git
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DVC_NO_ANALYTICS=1
+    command: dvc repro
+    networks:
+      - ml-network
+    profiles:
+      - pipeline
+
+  # DVC Pull - Fetch data/models from remote storage
   dvc-pull:
     build:
       context: .
@@ -11,16 +44,20 @@ services:
       - ./data:/app/data
       - ./models:/app/models
       - ./.dvc:/app/.dvc
-      - ./.env:/app/.env
     env_file:
       - .env
     environment:
       - PYTHONUNBUFFERED=1
+      - DVC_NO_ANALYTICS=1
     command: dvc pull
     networks:
       - ml-network
 
-  # Main application service - EDA Pipeline
+  # ============================================================================
+  # INDIVIDUAL PIPELINE STAGES (can run independently or via DVC)
+  # ============================================================================
+
+  # EDA Pipeline - Exploratory Data Analysis
   eda-pipeline:
     build:
       context: .
@@ -41,8 +78,10 @@ services:
       - ml-network
     depends_on:
       - dvc-pull
+    profiles:
+      - manual
 
-  # ML Pipeline service - Train models
+  # ML Training Pipeline - Train and evaluate models
   ml-pipeline:
     build:
       context: .
@@ -64,8 +103,10 @@ services:
     depends_on:
       - dvc-pull
       - eda-pipeline
+    profiles:
+      - manual
 
-  # Comparison service - Validate results
+  # Dataset Comparison - Validate and compare datasets
   compare:
     build:
       context: .
@@ -83,9 +124,10 @@ services:
       - ml-network
     depends_on:
       - dvc-pull
-      - eda-pipeline
+    profiles:
+      - manual
 
-  # Visualization service - Generate EDA plots
+  # Data Visualization - Generate exploratory plots
   visualize:
     build:
       context: .
@@ -104,25 +146,14 @@ services:
       - ml-network
     depends_on:
       - dvc-pull
-      - eda-pipeline
-      
-  # Test service - Run unit tests
-  test:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: obesity-ml-test
-    volumes:
-      - ./data:/app/data
-      - ./models:/app/models
-      - ./mlruns:/app/mlruns
-    environment:
-      - PYTHONUNBUFFERED=1
-    command: pytest tests/ -v --tb=short
-    networks:
-      - ml-network
+    profiles:
+      - manual
 
-  # Drift simulation service - Generate dataset with simulated drift
+  # ============================================================================
+  # DRIFT DETECTION SERVICES
+  # ============================================================================
+
+  # Drift Simulation - Generate synthetic drifted dataset
   simulate-drift:
     build:
       context: .
@@ -140,9 +171,10 @@ services:
       - ml-network
     depends_on:
       - dvc-pull
-      - eda-pipeline
+    profiles:
+      - drift
 
-  # Drift detection service - Detect and report data drift
+  # Drift Detection - Detect data drift and generate alerts
   detect-drift:
     build:
       context: .
@@ -161,12 +193,11 @@ services:
     networks:
       - ml-network
     depends_on:
-      - dvc-pull
-      - eda-pipeline
-      - ml-pipeline
       - simulate-drift
+    profiles:
+      - drift
 
-  # Drift visualization service - Generate drift visualizations
+  # Drift Visualization - Generate drift analysis plots
   visualize-drift:
     build:
       context: .
@@ -184,8 +215,37 @@ services:
       - ml-network
     depends_on:
       - detect-drift
+    profiles:
+      - drift
 
-  # FastAPI service - Model serving
+  # ============================================================================
+  # TESTING SERVICES
+  # ============================================================================
+
+  # Unit Tests - Run test suite
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: obesity-ml-test
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./mlruns:/app/mlruns
+      - ./tests:/app/tests
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: pytest tests/ -v --tb=short --cov=src
+    networks:
+      - ml-network
+    profiles:
+      - test
+
+  # ============================================================================
+  # API & MONITORING SERVICES
+  # ============================================================================
+
+  # FastAPI Service - Model serving and predictions
   api:
     build:
       context: .
@@ -194,8 +254,9 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./models:/app/models
-      - ./mlruns:/app/mlruns
+      - ./models:/app/models:ro
+      - ./mlruns:/app/mlruns:ro
+      - ./src/api:/app/src/api
     env_file:
       - .env
     environment:
@@ -204,14 +265,16 @@ services:
     networks:
       - ml-network
     depends_on:
-      - ml-pipeline
+      - dvc-pull
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 10s
       timeout: 5s
       retries: 5
+    profiles:
+      - services
 
-  # MLflow tracking server
+  # MLflow Tracking Server - Experiment tracking and management
   mlflow:
     build:
       context: .
@@ -226,23 +289,21 @@ services:
     command: mlflow ui --host 0.0.0.0 --port 5001 --backend-store-uri file:///app/mlruns
     networks:
       - ml-network
+    profiles:
+      - services
 
-  # Interactive shell - For development
+  # ============================================================================
+  # DEVELOPMENT SERVICES
+  # ============================================================================
+
+  # Interactive Shell - For debugging and development
   shell:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: obesity-ml-shell
     volumes:
-      - ./data:/app/data
-      - ./models:/app/models
-      - ./reports:/app/reports
-      - ./mlruns:/app/mlruns
-      - ./src:/app/src
-      - ./scripts:/app/scripts
-      - ./tests:/app/tests
-      - ./.dvc:/app/.dvc
-      - ./.env:/app/.env
+      - ./:/app
     env_file:
       - .env
     environment:
@@ -252,13 +313,26 @@ services:
     tty: true
     networks:
       - ml-network
+    profiles:
+      - dev
+
+# ============================================================================
+# NETWORKS & VOLUMES
+# ============================================================================
 
 networks:
   ml-network:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
 
 volumes:
   data:
+    driver: local
   models:
+    driver: local
   reports:
+    driver: local
   mlruns:
+    driver: local:
