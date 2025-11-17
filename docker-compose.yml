@@ -335,4 +335,4 @@ volumes:
   reports:
     driver: local
   mlruns:
-    driver: local:
+    driver: local
