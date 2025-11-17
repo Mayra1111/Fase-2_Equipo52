@@ -33,10 +33,9 @@ echo "AWS_SECRET_ACCESS_KEY=your_secret" >> .env
 # 2. Build Docker image (3-5 min, first time only)
 docker-compose build
 
-# 3. Run ML pipeline (choose one, 10-20 min)
-./docker-run.sh dvc-basic       # Option A: Basic ML
-./docker-run.sh dvc-drift       # Option B: + Drift detection
-./docker-run.sh dvc-mlflow      # Option C: + MLflow tracking
+# 3. Run ML pipeline (10-20 min)
+docker-compose run --rm dvc-pipeline-basic
+# OR: docker-compose run dvc-pipeline
 
 # 4. Start API
 docker-compose up -d api
@@ -142,7 +141,7 @@ curl http://localhost:8000/model-info
 **Verification Steps**:
 ```bash
 # Run pipeline
-./docker-run.sh dvc-basic
+docker-compose run --rm dvc-pipeline-basic
 
 # Compare metrics (should be identical to baseline)
 diff baseline_metrics.json reports/metrics/evaluation_metrics.json
@@ -198,13 +197,17 @@ docker push <username>/ml-service:v1.0.0
 - **Automated Alerts**: Configured thresholds with recommendations
 - **Visualizations**: 3 drift analysis charts generated
 
-**Run Drift Detection**:
+**Run Drift Detection** (included in main pipeline):
 ```bash
-./docker-run.sh dvc-drift
-# Generates:
+docker-compose run --rm dvc-pipeline-basic
+# Pipeline includes drift detection stages:
+# - simulate_drift: Creates synthetic drift scenarios
+# - detect_drift: Analyzes drift with statistical tests
+# - visualize_drift: Generates 3 drift analysis charts
+# Outputs:
 # - reports/drift/drift_report.json (quantitative results)
 # - reports/drift/drift_alerts.txt (human-readable alerts)
-# - 3 visualization PNG files
+# - 3 visualization PNG files in reports/figures/
 ```
 
 **Alert Example**:
@@ -314,30 +317,26 @@ docker-compose run --rm shell dvc status
 
 ### Running Pipelines
 
-**Choose ONE pipeline based on your needs:**
+**Single Unified Pipeline** (includes all functionality):
 
-#### Option A: Basic ML Pipeline (Development)
 ```bash
-./docker-run.sh dvc-basic
-# Runs: EDA → Preprocess → Train → Evaluate → Visualize → Test
-# Duration: 10-15 minutes
-# Best for: Rapid development, quick iterations
-```
+docker-compose run --rm dvc-pipeline-basic
+# OR: docker-compose run dvc-pipeline
 
-#### Option B: ML + Drift Detection (Production)
-```bash
-./docker-run.sh dvc-drift
-# Runs: Basic 5 stages + Simulate Drift → Detect Drift → Visualize Drift → Test
+# Runs (9 stages total):
+#  1. EDA - Exploratory Data Analysis
+#  2. Preprocess - Feature engineering, scaling
+#  3. Train - Model training with cross-validation
+#  4. Evaluate - Model evaluation and metrics
+#  5. Visualize - Report and chart generation
+#  6. simulate_drift - Create synthetic drift scenarios
+#  7. detect_drift - Detect data drift with statistical tests
+#  8. visualize_drift - Generate drift analysis visualizations
+#  9. test - Run unit tests with coverage
+#
 # Duration: 15-20 minutes
-# Best for: Production monitoring, detecting data quality issues
-```
-
-#### Option C: ML + MLflow Tracking (Experimentation)
-```bash
-./docker-run.sh dvc-mlflow
-# Runs: EDA → Preprocess → Train [logged] → Evaluate [logged] → Visualize → Test
-# Duration: 10-15 minutes
-# Best for: Hyperparameter tuning, experiment comparison
+# All stages run automatically in sequence
+# Includes: Data versioning, reproducibility, drift detection, and testing
 ```
 
 ### Testing
@@ -403,13 +402,13 @@ curl -X POST http://localhost:8000/predict \
 # Check current model performance
 curl http://localhost:8000/model-info
 
-# Run drift detection (included in dvc-drift pipeline)
-./docker-run.sh dvc-drift
+# Run full pipeline including drift detection
+docker-compose run --rm dvc-pipeline-basic
 
 # View drift report
 cat reports/drift/drift_alerts.txt
 
-# View drift visualizations
+# View drift visualizations (generated automatically)
 open reports/figures/10_drift_distributions.png
 open reports/figures/11_drift_performance_comparison.png
 open reports/figures/12_drift_psi_heatmap.png
@@ -548,13 +547,13 @@ docker-compose run --rm test
 
 ### Pipeline Management
 ```bash
-./docker-run.sh dvc-basic       # Run basic pipeline
-./docker-run.sh dvc-drift       # Run with drift detection
-./docker-run.sh dvc-mlflow      # Run with MLflow
+docker-compose run --rm dvc-pipeline-basic    # Run full pipeline
+docker-compose run dvc-pipeline               # Alternative
 
-dvc status                       # Check pipeline status
-dvc dag                          # View pipeline DAG
-dvc metrics show                 # Display metrics
+dvc status                                    # Check pipeline status
+dvc dag                                       # View pipeline DAG
+dvc metrics show                              # Display metrics
+dvc repro                                     # Reproduce pipeline locally
 ```
 
 ### Testing
