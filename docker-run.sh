@@ -32,7 +32,12 @@ USAGE:
 
 COMMANDS:
 
-  PIPELINE COMMANDS:
+  DVC ORCHESTRATED PIPELINES (NEW - choose one):
+    dvc-basic     DVC ML pipeline only (5 stages, 10-15 min)
+    dvc-drift     DVC ML + drift detection (8 stages, 15-20 min)
+    dvc-mlflow    DVC ML + MLflow tracking (5 stages, 10-15 min)
+
+  MANUAL PIPELINE COMMANDS:
     eda           Run the EDA pipeline (data cleaning)
     ml            Run the ML pipeline (model training)
     visualize     Generate EDA visualizations (PNG images)
@@ -41,7 +46,7 @@ COMMANDS:
     all           Run EDA + ML + Visualize + Compare + Test (complete workflow)
 
   SERVER COMMANDS:
-    mlflow        Start MLflow UI (http://localhost:5000)
+    mlflow        Start MLflow UI (http://localhost:5001)
     shell         Open interactive bash shell inside container
 
   MANAGEMENT COMMANDS:
@@ -55,13 +60,19 @@ COMMANDS:
 
 EXAMPLES:
 
-  # Run complete workflow (recommended for first time)
-  ./docker-run.sh all
+  # Run DVC basic pipeline (no drift)
+  ./docker-run.sh dvc-basic
 
-  # Run only EDA pipeline
+  # Run DVC pipeline with drift detection
+  ./docker-run.sh dvc-drift
+
+  # Run DVC pipeline with MLflow experiment tracking
+  ./docker-run.sh dvc-mlflow
+
+  # Run EDA pipeline (manual)
   ./docker-run.sh eda
 
-  # Run ML training
+  # Run ML training (manual)
   ./docker-run.sh ml
 
   # Generate visualizations
@@ -82,7 +93,7 @@ EXAMPLES:
   # Clean everything and start fresh
   ./docker-run.sh clean
   ./docker-run.sh build
-  ./docker-run.sh all
+  ./docker-run.sh dvc-basic
 
 EOF
 }
@@ -93,6 +104,33 @@ build_images() {
     docker-compose build
     print_message "$GREEN" "✅ Build complete!"
 }
+
+# DVC Pipeline functions
+
+run_dvc_basic() {
+    print_message "$BLUE" "🚀 Running DVC basic pipeline (ML only)..."
+    print_message "$YELLOW" "Stages: EDA → Preprocess → Train → Evaluate → Visualize"
+    docker-compose run --rm dvc-pipeline-basic
+    print_message "$GREEN" "✅ DVC basic pipeline complete! (10-15 min)"
+}
+
+run_dvc_drift() {
+    print_message "$BLUE" "🚀 Running DVC drift pipeline (ML + drift detection)..."
+    print_message "$YELLOW" "Stages: [Basic] + Simulate Drift → Detect Drift → Visualize Drift"
+    docker-compose run --rm dvc-pipeline-drift
+    print_message "$GREEN" "✅ DVC drift pipeline complete! (15-20 min)"
+    print_message "$YELLOW" "Check drift alerts: cat reports/drift/drift_alerts.txt"
+}
+
+run_dvc_mlflow() {
+    print_message "$BLUE" "🚀 Running DVC MLflow pipeline (ML + experiment tracking)..."
+    print_message "$YELLOW" "Stages: EDA → Preprocess → Train [logged] → Evaluate [logged] → Visualize"
+    docker-compose run --rm dvc-pipeline-mlflow
+    print_message "$GREEN" "✅ DVC MLflow pipeline complete! (10-15 min)"
+    print_message "$YELLOW" "To view experiments, run: ./docker-run.sh mlflow"
+}
+
+# Manual Pipeline functions
 
 # Function to run EDA pipeline
 run_eda() {
@@ -131,27 +169,27 @@ run_tests() {
 run_all() {
     print_message "$YELLOW" "🚀 Running complete workflow..."
     echo ""
-    
+
     print_message "$BLUE" "Step 1/5: Running EDA pipeline..."
     run_eda
     echo ""
-    
+
     print_message "$BLUE" "Step 2/5: Running ML pipeline..."
     run_ml
     echo ""
-    
+
     print_message "$BLUE" "Step 3/5: Generating visualizations..."
     run_visualize
     echo ""
-    
+
     print_message "$BLUE" "Step 4/5: Comparing datasets..."
     run_compare
     echo ""
-    
+
     print_message "$BLUE" "Step 5/5: Running tests..."
     run_tests
     echo ""
-    
+
     print_message "$GREEN" "╔════════════════════════════════════════════════════════════╗"
     print_message "$GREEN" "║                                                            ║"
     print_message "$GREEN" "║         🎉 COMPLETE WORKFLOW FINISHED! 🎉                  ║"
@@ -162,7 +200,7 @@ run_all() {
 # Function to start MLflow UI
 start_mlflow() {
     print_message "$BLUE" "🔬 Starting MLflow UI..."
-    print_message "$YELLOW" "Access MLflow at: http://localhost:5000"
+    print_message "$YELLOW" "Access MLflow at: http://localhost:5001"
     print_message "$YELLOW" "Press Ctrl+C to stop"
     docker-compose up mlflow
 }
@@ -196,6 +234,15 @@ clean_all() {
 
 # Main script logic
 case "${1:-help}" in
+    dvc-basic)
+        run_dvc_basic
+        ;;
+    dvc-drift)
+        run_dvc_drift
+        ;;
+    dvc-mlflow)
+        run_dvc_mlflow
+        ;;
     eda)
         run_eda
         ;;

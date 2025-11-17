@@ -3,7 +3,8 @@
     "allow": [
       "Bash(cat:*)",
       "Bash(git checkout:*)",
-      "Bash(git fetch:*)"
+      "Bash(git fetch:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nfeat: Add test stage to all three DVC pipelines\n\n- Add pytest test stage to dvc_basic.yaml (Stage 6)\n- Add pytest test stage to dvc_with_drift.yaml (Stage 9)\n- Add pytest test stage to dvc_with_mlflow.yaml (Stage 6)\n\nTest stage runs: pytest tests/ -v --tb=short --cov=src\nDependencies: tests/, src/, scripts/, and config/params.yaml\n\nNow all DVC pipelines include unit testing at the end, matching\nthe complete workflow behavior of ''docker-run.ps1 all'' command.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
     ],
     "deny": [],
     "ask": []

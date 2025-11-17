@@ -1,6 +1,8 @@
 [core]
-    remote = team_remote
+    remote = remote-equipo52
 ['remote "team_remote"']
     url = s3://itesm-mna/202502-equipo52
     region = us-east-2
     profile = equipo52
+['remote "remote-equipo52"']
+    url = s3://itesm-mna/202502-equipo52/dvc-storage
