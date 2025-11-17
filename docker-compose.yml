@@ -9,8 +9,97 @@ services:
   # DATA PIPELINE SERVICES
   # ============================================================================
 
+  # ============================================================================
+  # THREE DVC PIPELINE OPTIONS ⭐ NEW
+  # ============================================================================
+
+  # DVC Pipeline 1: BASIC (Without Drift Detection)
+  # Runs: EDA → Preprocess → Train → Evaluate → Visualize
+  # Execute with: docker-compose run dvc-pipeline-basic
+  dvc-pipeline-basic:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: obesity-ml-dvc-basic
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./reports:/app/reports
+      - ./mlruns:/app/mlruns
+      - ./.dvc:/app/.dvc
+      - ./.git:/app/.git
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DVC_NO_ANALYTICS=1
+    command: dvc repro -f dvc_basic.yaml
+    networks:
+      - ml-network
+    profiles:
+      - dvc-pipelines
+
+  # DVC Pipeline 2: WITH DRIFT DETECTION
+  # Runs: EDA → Preprocess → Train → Evaluate → Visualize → Simulate Drift → Detect Drift → Visualize Drift
+  # Execute with: docker-compose run dvc-pipeline-drift
+  dvc-pipeline-drift:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: obesity-ml-dvc-drift
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./reports:/app/reports
+      - ./mlruns:/app/mlruns
+      - ./.dvc:/app/.dvc
+      - ./.git:/app/.git
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DVC_NO_ANALYTICS=1
+    command: dvc repro -f dvc_with_drift.yaml
+    networks:
+      - ml-network
+    profiles:
+      - dvc-pipelines
+
+  # DVC Pipeline 3: WITH MLFLOW TRACKING ⭐ Recommended for Experiment Tracking
+  # Runs: EDA → Preprocess → Train (with MLflow) → Evaluate → Visualize
+  # MLflow automatically tracks all experiments and metrics
+  # Execute with: docker-compose run dvc-pipeline-mlflow
+  # View results at: http://localhost:5001 (run: docker-compose up mlflow)
+  dvc-pipeline-mlflow:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: obesity-ml-dvc-mlflow
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./reports:/app/reports
+      - ./mlruns:/app/mlruns
+      - ./.dvc:/app/.dvc
+      - ./.git:/app/.git
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DVC_NO_ANALYTICS=1
+      - MLFLOW_TRACKING_URI=file:///app/mlruns
+    command: dvc repro -f dvc_with_mlflow.yaml
+    networks:
+      - ml-network
+    profiles:
+      - dvc-pipelines
+
+  # ============================================================================
+  # BACKWARD COMPATIBILITY (Legacy Services - use new dvc-pipeline-* above)
+  # ============================================================================
+
   # DVC Pipeline Orchestrator - Runs ML pipeline only (without drift detection)
-  # Execute all stages in correct order with: docker-compose run dvc-pipeline
+  # Execute with: docker-compose run dvc-pipeline (uses dvc_basic.yaml)
   dvc-pipeline:
     build:
       context: .
@@ -28,14 +117,14 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - DVC_NO_ANALYTICS=1
-    command: dvc repro --single-item evaluate
+    command: dvc repro -f dvc_basic.yaml
     networks:
       - ml-network
     profiles:
       - pipeline
 
-  # DVC Full Pipeline Orchestrator - Runs complete pipeline including drift detection
-  # Execute all stages (ML + drift) with: docker-compose run dvc-full-pipeline
+  # DVC Full Pipeline Orchestrator - Runs complete pipeline including drift
+  # Execute with: docker-compose run dvc-full-pipeline (uses dvc_with_drift.yaml)
   dvc-full-pipeline:
     build:
       context: .
@@ -53,14 +142,14 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - DVC_NO_ANALYTICS=1
-    command: dvc repro
+    command: dvc repro -f dvc_with_drift.yaml
     networks:
       - ml-network
     profiles:
       - pipeline
 
-  # DVC Drift-Only Pipeline - Runs drift detection stages only (simulate, detect, visualize)
-  # Requires trained model. Execute with: docker-compose run dvc-drift-pipeline
+  # DVC Drift-Only Pipeline
+  # Execute with: docker-compose run dvc-drift-pipeline
   dvc-drift-pipeline:
     build:
       context: .
