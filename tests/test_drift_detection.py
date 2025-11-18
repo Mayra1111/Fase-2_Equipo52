@@ -91,21 +91,32 @@ class TestDistributionComparison:
 
     def test_ks_test_identical_distributions(self):
         """KS test should show no significance for identical distributions"""
+        np.random.seed(42)
         data = pd.Series(np.random.normal(0, 1, 500))
-        result = compare_distributions(data, data, test_type='ks')
+        # Use copy to avoid reference issues
+        data_copy = data.copy()
+        result = compare_distributions(data, data_copy, test_type='ks')
 
         assert 'p_value' in result
         assert 'statistic' in result
         assert 'significant' in result
-        assert result['significant'] is False, "Identical distributions should not be significant"
+        # When comparing identical distributions, p-value should be very high (not significant)
+        # The statistic should be 0 or very close to 0, making p-value = 1.0 or close to 1.0
+        # Due to numerical precision, we check that it's not significant
+        # Use not instead of is False because result['significant'] is numpy.bool_, not Python bool
+        assert not result['significant'], \
+            f"Identical distributions should not be significant. Got p_value={result['p_value']}, significant={result['significant']}, statistic={result['statistic']}"
 
     def test_ks_test_different_distributions(self):
         """KS test should detect significantly different distributions"""
+        np.random.seed(42)
         baseline = pd.Series(np.random.normal(0, 1, 500))
         current = pd.Series(np.random.normal(3, 1, 500))  # Very different
         result = compare_distributions(baseline, current, test_type='ks')
 
-        assert result['significant'] is True, "Very different distributions should be significant"
+        # numpy.bool_ works correctly in boolean context
+        assert result['significant'], \
+            f"Very different distributions should be significant. Got p_value={result['p_value']}, significant={result['significant']}"
         assert result['p_value'] < 0.05
 
     def test_mannwhitney_test(self):

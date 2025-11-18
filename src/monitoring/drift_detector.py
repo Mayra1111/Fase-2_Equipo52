@@ -101,15 +101,16 @@ def compare_distributions(
                 'significant': False
             }
 
+        # Validate test type before running test
+        if test_type not in ['ks', 'mannwhitney']:
+            raise ValueError(f"Unknown test type: {test_type}")
+
         if test_type == 'ks':
             # Kolmogorov-Smirnov test
             statistic, p_value = stats.ks_2samp(baseline_clean, current_clean)
         elif test_type == 'mannwhitney':
             # Mann-Whitney U test (non-parametric)
             statistic, p_value = stats.mannwhitneyu(baseline_clean, current_clean, alternative='two-sided')
-        else:
-            logger.error(f"Unknown test type: {test_type}")
-            raise ValueError(f"Unknown test type: {test_type}")
 
         # Significance at 0.05 level
         significant = p_value < 0.05
@@ -120,6 +121,9 @@ def compare_distributions(
             'significant': significant
         }
 
+    except ValueError:
+        # Re-raise ValueError (invalid test type)
+        raise
     except Exception as e:
         logger.error(f"Error comparing distributions: {str(e)}")
         return {
@@ -260,15 +264,19 @@ class DriftDetector:
             # Determine alert level
             alert_level = 'none'
             if metric_name == 'accuracy':
-                if degradation > self.accuracy_critical_threshold:
+                # Thresholds are in absolute values (0.05 = 5% absolute), convert to percentage
+                # For 0.95 baseline, 0.05 degradation = 5.26% relative
+                # We want to check if degradation_pct >= 5% (relative)
+                # So we compare degradation_pct with threshold * 100
+                if degradation_pct >= (self.accuracy_critical_threshold * 100):
                     alert_level = 'critical'
-                elif degradation > self.accuracy_degradation_threshold:
+                elif degradation_pct >= (self.accuracy_degradation_threshold * 100):
                     alert_level = 'warning'
             else:
                 # For other metrics, use 10% degradation as threshold
-                if degradation_pct > 10:
+                if degradation_pct >= 10:
                     alert_level = 'critical'
-                elif degradation_pct > 5:
+                elif degradation_pct >= 5:
                     alert_level = 'warning'
 
             comparison[metric_name] = {
