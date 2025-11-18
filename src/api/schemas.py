@@ -32,7 +32,9 @@ class ObesityFeatures(BaseModel):
     # Yes/No features
     family_history_with_overweight: str = Field(..., description="'yes' or 'no'")
     FAVC: str = Field(..., description="Frequent Consumption of High Caloric Food: 'yes' or 'no'")
+    SMOKE: str = Field(..., description="Smoking: 'yes' or 'no'")
     SCC: str = Field(..., description="Caloric Beverages Consumption: 'yes' or 'no'")
+    CALC: str = Field(..., description="Frequency of Alcohol Consumption: 'no', 'Sometimes', 'Frequently', 'Always'")
 
     class Config:
         schema_extra = {
@@ -50,7 +52,9 @@ class ObesityFeatures(BaseModel):
                 "MTRANS": "Automobile",
                 "family_history_with_overweight": "yes",
                 "FAVC": "no",
-                "SCC": "no"
+                "SMOKE": "no",
+                "SCC": "no",
+                "CALC": "no"
             }
         }
 

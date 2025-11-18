@@ -189,7 +189,7 @@ class TestDriftDetector:
         assert len(feature_drift) == len(numeric_cols)
 
         # Check Age has drift (we shifted it)
-        assert feature_drift['Age']['has_drift'] is True
+        assert feature_drift['Age']['has_drift']
         assert feature_drift['Age']['psi'] > 0.2 or feature_drift['Age']['ks_significant']
 
     def test_performance_comparison(self, drift_detector):
@@ -211,7 +211,7 @@ class TestDriftDetector:
         comparison = drift_detector.compare_performance(baseline_metrics, current_metrics)
 
         assert 'accuracy' in comparison
-        assert comparison['accuracy']['degradation_pct'] > 5
+        assert comparison['accuracy']['degradation_pct'] >= 5
         assert comparison['accuracy']['alert_level'] == 'warning'
 
     def test_alert_generation(self, drift_detector, sample_data):

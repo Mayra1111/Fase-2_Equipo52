@@ -1,4 +1,4 @@
-version: '3.8'
+#version: '3.8'
 
 # Hybrid Docker Compose Configuration
 # Combines DVC pipeline orchestration with modular service architecture

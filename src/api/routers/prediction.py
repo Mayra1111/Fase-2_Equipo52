@@ -100,10 +100,16 @@ async def predict_single(
         features_dict = features.dict()
         features_df = pd.DataFrame([features_dict])
 
-        logger.info(f"Processing single prediction with {len(features_dict)} features")
+        # Calculate BMI feature (Weight / (Height/100)^2) if not already present
+        if 'BMI' not in features_df.columns and 'Weight' in features_df.columns and 'Height' in features_df.columns:
+            features_df['BMI'] = features_df['Weight'] / ((features_df['Height'] / 100) ** 2)
+            logger.info(f"BMI calculated: {features_df['BMI'].values[0]:.2f}")
 
-        # Make prediction
+        logger.info(f"Processing single prediction with {len(features_df.columns)} features")
+
+        # Make prediction with probability
         prediction_encoded = model.predict(features_df)[0]
+        prediction_proba = model.predict_proba(features_df)[0]
 
         # Get class names from metadata
         target_names = loader.model_metadata.get("target_names", [])
@@ -118,11 +124,14 @@ async def predict_single(
         else:
             prediction_class = str(prediction_encoded)
 
-        logger.info(f"Prediction successful: {prediction_class}")
+        # Get confidence score (max probability)
+        confidence = float(np.max(prediction_proba)) if len(prediction_proba) > 0 else None
+
+        logger.info(f"Prediction successful: {prediction_class} (confidence: {confidence:.4f})")
 
         return PredictionResponse(
             prediction=prediction_class,
-            confidence=None,
+            confidence=confidence,
             features_received=features_dict,
             model_name=loader.model_metadata.get("model_name", "Unknown"),
             model_version=settings.model_version
@@ -224,8 +233,14 @@ async def predict_batch(
         samples_dicts = [sample.dict() for sample in request.samples]
         samples_df = pd.DataFrame(samples_dicts)
 
-        # Make batch predictions
+        # Calculate BMI feature (Weight / (Height/100)^2) if not already present
+        if 'BMI' not in samples_df.columns and 'Weight' in samples_df.columns and 'Height' in samples_df.columns:
+            samples_df['BMI'] = samples_df['Weight'] / ((samples_df['Height'] / 100) ** 2)
+            logger.info(f"BMI calculated for {total_samples} samples")
+
+        # Make batch predictions with probabilities
         predictions_encoded = model.predict(samples_df)
+        predictions_proba = model.predict_proba(samples_df)
 
         # Get class names from metadata
         target_names = loader.model_metadata.get("target_names", [])
@@ -235,8 +250,8 @@ async def predict_batch(
         successful = 0
         failed = 0
 
-        for i, (pred_encoded, original_features) in enumerate(
-            zip(predictions_encoded, samples_dicts)
+        for i, (pred_encoded, pred_probs, original_features) in enumerate(
+            zip(predictions_encoded, predictions_proba, samples_dicts)
         ):
             try:
                 # Convert encoded prediction to class name
@@ -249,10 +264,13 @@ async def predict_batch(
                 else:
                     pred_class = str(pred_encoded)
 
+                # Get confidence score (max probability)
+                confidence = float(np.max(pred_probs)) if len(pred_probs) > 0 else None
+
                 predictions.append(
                     PredictionResponse(
                         prediction=pred_class,
-                        confidence=None,
+                        confidence=confidence,
                         features_received=original_features,
                         model_name=loader.model_metadata.get("model_name", "Unknown"),
                         model_version=settings.model_version

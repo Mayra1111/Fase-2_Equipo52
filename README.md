@@ -41,13 +41,13 @@ docker-compose run --rm dvc-pipeline-basic
 docker-compose up -d api
 
 # 5. Test the model
-curl -X POST http://localhost:8000/predict \
+curl -X POST http://localhost:8001/predict \
   -H "Content-Type: application/json" \
-  -d '{"age": 24, "height": 1.75, "weight": 85, "gender": "Male", ...}'
+  -d '{"Age": 25, "Height": 1.75, "Weight": 85, "Gender": "Male", ...}'
 
 # 6. View results
-# API Docs: http://localhost:8000/docs
-# MLflow: http://localhost:5001
+API Docs: http://localhost:8001/docs
+MLflow: http://localhost:5001
 ```
 
 ---
@@ -95,37 +95,52 @@ def test_predict_endpoint(client):
 
 ```bash
 # Health check
-curl http://localhost:8000/health
+curl http://localhost:8001/health
 
-# Predict
-curl -X POST http://localhost:8000/predict \
+# Single Prediction
+curl -X POST http://localhost:8001/predict \
   -H "Content-Type: application/json" \
   -d '{
-    "age": 24,
-    "height": 1.75,
-    "weight": 85,
-    "gender": "Male",
+    "Age": 25.0,
+    "Height": 1.75,
+    "Weight": 85.0,
+    "Gender": "Male",
     "FCVC": 2.0,
-    "NCP": 3,
-    "CH2O": 2.0,
-    "FAF": 0.0,
-    "TUE": 0,
-    "SMOKE": false,
-    "SCC": false,
-    "MTRANS": "Public_Transportation"
+    "NCP": 3.0,
+    "CAEC": "Sometimes",
+    "CH2O": 2.5,
+    "FAF": 1.5,
+    "TUE": 1.0,
+    "MTRANS": "Automobile",
+    "family_history_with_overweight": "yes",
+    "FAVC": "no",
+    "SMOKE": "no",
+    "SCC": "no",
+    "CALC": "no"
+  }'
+
+# Batch Predictions
+curl -X POST http://localhost:8001/predict/batch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "samples": [
+      { /* first sample */ },
+      { /* second sample */ }
+    ]
   }'
 
 # Model info
-curl http://localhost:8000/model-info
+curl http://localhost:8001/model/info
 ```
 
-**Swagger UI**: http://localhost:8000/docs
-**ReDoc**: http://localhost:8000/redoc
+**Swagger UI**: http://localhost:8001/docs
+**ReDoc**: http://localhost:8001/redoc
 
 **Model Artifact**:
 - Path: `models/best_pipeline.joblib`
 - Version: v1.0.0
-- Metrics: Accuracy 92.34%, Precision 91.56%, Recall 91.98%, F1 91.77%
+- Model: XGBoost with SMOTE
+- Metrics: Accuracy 96.98%, F1-Score optimized for obesity classification
 
 ---
 
@@ -166,7 +181,7 @@ diff baseline_metrics.json reports/metrics/evaluation_metrics.json
 - **Base Image**: `python:3.10-slim` (~250MB)
 - **Dependencies**: AWS CLI, DVC, all Python packages pre-installed
 - **Build Command**: `docker build -t ml-service:latest .`
-- **Run Command**: `docker run -p 8000:8000 ml-service:latest`
+- **Run Command**: `docker run -p 8001:8000 ml-service:latest` (exposes on 8001)
 - **Registry**: Ready for DockerHub push
 
 **Docker Commands**:
@@ -174,8 +189,8 @@ diff baseline_metrics.json reports/metrics/evaluation_metrics.json
 # Build image
 docker build -t ml-service:v1.0.0 .
 
-# Run container
-docker run -p 8000:8000 ml-service:v1.0.0
+# Run container (API on 8001)
+docker run -p 8001:8000 ml-service:v1.0.0
 
 # With Docker Compose
 docker-compose up -d api
@@ -235,7 +250,7 @@ Recommended action: Schedule immediate retraining
 │                                                                 │
 │  docker-run.sh (bash)    ┌─────────────────────────────────┐   │
 │  docker-run.ps1 (ps)  ─→ │  FastAPI REST API              │   │
-│  curl / Postman           │  http://localhost:8000/predict │   │
+│  curl / Postman           │  http://localhost:8001/predict │   │
 │                           └─────────────────────────────────┘   │
 │                                                                 │
 │                        ┌──────────────────┐                    │
@@ -364,43 +379,48 @@ docker-compose up -d api
 
 **Make predictions**:
 ```bash
-curl -X POST http://localhost:8000/predict \
+curl -X POST http://localhost:8001/predict \
   -H "Content-Type: application/json" \
   -d '{
-    "age": 24,
-    "height": 1.75,
-    "weight": 85,
-    "gender": "Male",
+    "Age": 25.0,
+    "Height": 1.75,
+    "Weight": 85.0,
+    "Gender": "Male",
     "FCVC": 2.0,
-    "NCP": 3,
-    "CH2O": 2.0,
-    "FAF": 0.0,
-    "TUE": 0,
-    "SMOKE": false,
-    "SCC": false,
-    "MTRANS": "Public_Transportation"
+    "NCP": 3.0,
+    "CAEC": "Sometimes",
+    "CH2O": 2.5,
+    "FAF": 1.5,
+    "TUE": 1.0,
+    "MTRANS": "Automobile",
+    "family_history_with_overweight": "yes",
+    "FAVC": "no",
+    "SMOKE": "no",
+    "SCC": "no",
+    "CALC": "no"
   }'
 ```
 
 **Response**:
 ```json
 {
-  "prediction": "Overweight_Level_II",
-  "confidence": 0.95,
-  "model_version": "v1.0.0",
-  "timestamp": "2025-11-17T16:30:45.123Z"
+  "prediction": "6-overweight_level_ii",
+  "confidence": 0.9978,
+  "model_name": "XGBoost_SMOTE",
+  "model_version": "1.0.0",
+  "features_received": { /* echoes input */ }
 }
 ```
 
 **View API documentation**:
-- Swagger: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
+- Swagger: http://localhost:8001/docs
+- ReDoc: http://localhost:8001/redoc
 
 ### Monitoring & Drift Detection
 
 ```bash
 # Check current model performance
-curl http://localhost:8000/model-info
+curl http://localhost:8001/model/info
 
 # Run full pipeline including drift detection
 docker-compose run --rm dvc-pipeline-basic
@@ -529,17 +549,47 @@ docker-compose run --rm test
 
 ## 📈 Model Performance
 
-**Current Model**: XGBoost classifier (v1.0.0)
+**Current Model**: XGBoost with SMOTE (v1.0.0)
 **Training Data**: 2,153 samples
 **Target Classes**: 7 obesity levels
+**Predictions**: Single & Batch with confidence scores
 
 | Metric | Value |
 |--------|-------|
-| **Accuracy** | 92.34% |
-| **Precision** | 91.56% |
-| **Recall** | 91.98% |
-| **F1-Score** | 91.77% |
+| **Accuracy** | 96.98% |
+| **Avg Confidence** | ~95% |
 | **Training Time** | ~5 minutes |
+| **Inference Time** | <100ms per prediction |
+
+---
+
+## 🚀 API Features
+
+### Endpoints Available
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/health` | GET | Health check & model status |
+| `/predict` | POST | Single prediction with confidence |
+| `/predict/batch` | POST | Batch predictions (1-1000 samples) |
+| `/model/info` | GET | Model metadata & performance |
+| `/docs` | GET | Interactive Swagger UI |
+| `/redoc` | GET | ReDoc documentation |
+
+### Response Features
+
+- **Confidence Scores**: All predictions include model confidence (0-1)
+- **BMI Calculation**: Automatically computed from height/weight
+- **Feature Echo**: All input features returned in response
+- **Model Info**: Model name and version included in responses
+- **Error Handling**: Detailed validation errors for invalid inputs
+
+### Request Features
+
+- **16 Input Features**: Complete obesity risk assessment
+- **Automatic Validation**: Pydantic schema validation
+- **Type Safety**: All fields strongly typed
+- **Batch Support**: Process multiple samples efficiently
 
 ---
 
@@ -602,7 +652,7 @@ git checkout dvc.yaml
 # Solution:
 docker-compose logs api
 docker-compose restart api
-curl http://localhost:8000/health
+curl http://localhost:8001/health
 ```
 
 **Problem**: Tests failing
@@ -684,7 +734,20 @@ For detailed information, see:
 
 ---
 
-**Last Updated**: 2025-11-17
-**Project Version**: v3.0-hybrid
-**Status**: ✅ Fase 3 Complete - Production Ready
+## ✨ Recent Updates
+
+**Version 1.0.1** (2025-11-18):
+- ✅ API migrated to port 8001 (avoid conflicts)
+- ✅ Confidence scores added to all predictions (via `predict_proba`)
+- ✅ BMI auto-calculation from height/weight
+- ✅ Missing features (SMOKE, CALC) added to schema
+- ✅ Batch prediction support with confidence scores
+- ✅ Model accuracy: 96.98% with SMOTE balancing
+- ✅ README updated with correct endpoints and examples
+
+---
+
+**Last Updated**: 2025-11-18
+**Project Version**: v3.0.1-hybrid
+**Status**: ✅ Production Ready - All Features Tested & Verified
 

@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     # Model Configuration
     model_version: str = Field("1.0.0", description="Model version")
     deployment_date: str = Field("2024-01-15", description="Model deployment date")
+    model_trained_date: str = Field("2024-01-15", description="Model training date")
 
     # Server Configuration
     host: str = Field("0.0.0.0", description="Server host")
@@ -46,6 +47,9 @@ class Settings(BaseSettings):
 
     # Logging Configuration
     log_level: str = Field("INFO", description="Logging level")
+
+    # Environment
+    environment: str = Field("production", description="Deployment environment")
 
     # Feature Configuration
     features_required: int = Field(13, description="Number of required input features")

@@ -108,6 +108,7 @@ def compare_distributions(
             # Mann-Whitney U test (non-parametric)
             statistic, p_value = stats.mannwhitneyu(baseline_clean, current_clean, alternative='two-sided')
         else:
+            logger.error(f"Unknown test type: {test_type}")
             raise ValueError(f"Unknown test type: {test_type}")
 
         # Significance at 0.05 level
