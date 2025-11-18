@@ -8,7 +8,7 @@ Author: MLOps Team - Equipo 52
 """
 
 from pydantic_settings import BaseSettings
-from pydantic import Field
+from pydantic import Field, ConfigDict
 from pathlib import Path
 from typing import Optional
 
@@ -55,9 +55,11 @@ class Settings(BaseSettings):
     redoc_url: str = Field("/redoc", description="ReDoc URL")
     openapi_url: str = Field("/openapi.json", description="OpenAPI schema URL")
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
+    model_config = ConfigDict(
+        env_file=".env",
+        case_sensitive=False,
+        extra="ignore"  # Ignore extra environment variables not defined in Settings
+    )
 
 
 def get_settings() -> Settings:
