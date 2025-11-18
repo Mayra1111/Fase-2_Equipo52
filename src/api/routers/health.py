@@ -58,7 +58,8 @@ async def health_check(loader: ModelLoader = Depends(get_model_loader)) -> Healt
         ```
     """
     try:
-        status = "healthy" if loader.model_loaded else "unhealthy"
+        # Use "healthy" if model loaded, "degraded" if not (not "unhealthy")
+        status = "healthy" if loader.model_loaded else "degraded"
 
         health_check_response = HealthCheck(
             status=status,

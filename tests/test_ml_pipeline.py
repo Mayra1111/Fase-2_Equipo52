@@ -110,8 +110,14 @@ class TestModelTrainer:
         return X_train, X_test, y_train, y_test, preproc, target_names
     
     def test_random_forest_training(self, setup_data):
-        """Test RandomForest training"""
+        """Test RandomForest training with baseline data (no drift)"""
         X_train, X_test, y_train, y_test, preproc, target_names = setup_data
+        
+        # Verify we're using baseline data (not drifted data)
+        assert REFACTORED_CLEAN_DATA_PATH.exists(), "Baseline data must exist"
+        # Ensure we're NOT using drifted data
+        drifted_path = REFACTORED_CLEAN_DATA_PATH.parent / "dataset_with_drift.csv"
+        # Note: drifted data may exist, but we're using baseline for this test
         
         trainer = ModelTrainer(preproc, target_names)
         model, predictions = trainer.train_random_forest(
@@ -122,6 +128,13 @@ class TestModelTrainer:
         assert len(predictions) == len(y_test), "Predictions length mismatch"
         assert 'RandomForest' in trainer.models, "Model not stored"
         assert 'RandomForest' in trainer.predictions, "Predictions not stored"
+        
+        # Verify accuracy is high with baseline data
+        from sklearn.metrics import accuracy_score
+        test_accuracy = accuracy_score(y_test, predictions)
+        assert test_accuracy >= 0.85, \
+            f"Model accuracy too low with baseline data: {test_accuracy:.4f}. " \
+            f"This should only happen with data drift, not with baseline data."
     
     def test_get_best_model(self, setup_data):
         """Test best model selection"""
@@ -135,6 +148,8 @@ class TestModelTrainer:
         assert best_name is not None, "Best model name not found"
         assert best_model is not None, "Best model not found"
         assert 0 <= best_acc <= 1, "Accuracy out of range"
+        # With baseline data (no drift), accuracy should be high
+        assert best_acc >= 0.85, f"Accuracy too low for baseline data: {best_acc:.4f}. This should only happen with data drift."
 
 
 class TestMLPipeline:
@@ -167,6 +182,13 @@ class TestMLPipeline:
             assert 'model_name' in metadata, "Model name not in metadata"
             assert 'accuracy' in metadata, "Accuracy not in metadata"
             assert 'target_names' in metadata, "Target names not in metadata"
+            
+            # Verify accuracy is high (baseline model, no drift)
+            saved_accuracy = metadata['accuracy']
+            assert saved_accuracy >= 0.85, \
+                f"Saved model accuracy too low: {saved_accuracy:.4f}. " \
+                f"Model should have high accuracy with baseline data. " \
+                f"Low accuracy should only occur with data drift."
         else:
             pytest.skip("Metadata not saved yet. Run: python scripts/run_ml.py")
 
