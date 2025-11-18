@@ -25,31 +25,91 @@
 
 ## ⚡ 5-Minute Quickstart
 
-```bash
-# 1. Clone and setup
-git clone <repo-url> && cd Fase-2_Equipo52
-echo "AWS_ACCESS_KEY_ID=your_key" > .env
-echo "AWS_SECRET_ACCESS_KEY=your_secret" >> .env
+### Prerequisites
 
-# 2. Build Docker image (3-5 min, first time only)
+Before starting, ensure you have:
+- **Docker Desktop** installed and running ([Download](https://www.docker.com/products/docker-desktop))
+- **Git** installed
+- **AWS Credentials** (Access Key ID and Secret Access Key) for S3 access
+- At least **4GB RAM** and **10GB disk space** available
+
+### Step-by-Step Setup
+
+```bash
+# 1. Clone the repository
+git clone <repo-url>
+cd Fase-2_Equipo52
+
+# 2. Create .env file with AWS credentials
+# Option A: Copy from example and edit
+cp .env.example .env
+# Then edit .env with your actual AWS credentials
+
+# Option B: Create directly (Windows PowerShell)
+New-Item -Path .env -ItemType File
+Add-Content .env "AWS_ACCESS_KEY_ID=your_actual_key_here"
+Add-Content .env "AWS_SECRET_ACCESS_KEY=your_actual_secret_here"
+
+# Option B: Create directly (Linux/Mac)
+echo "AWS_ACCESS_KEY_ID=your_actual_key_here" > .env
+echo "AWS_SECRET_ACCESS_KEY=your_actual_secret_here" >> .env
+
+# 3. Verify .env file was created
+cat .env  # Should show your AWS credentials
+
+# 4. Build Docker image (3-5 min, first time only)
 docker-compose build
 
-# 3. Run ML pipeline (10-20 min)
-docker-compose run --rm dvc-pipeline-basic
-# OR: docker-compose run dvc-pipeline
+# 5. Download data from S3 (if not already present)
+docker-compose run --rm dvc-pipeline dvc pull
 
-# 4. Start API
+# 6. Run complete ML pipeline (15-20 min)
+# This will: EDA → Preprocess → Train → Evaluate → Visualize → Drift Detection → Tests
+docker-compose run --rm dvc-pipeline-basic
+
+# 7. Verify everything worked
+# Check that model was created:
+ls -la models/best_pipeline.joblib
+
+# 8. Start API service
 docker-compose up -d api
 
-# 5. Test the model
-curl -X POST http://localhost:8001/predict \
-  -H "Content-Type: application/json" \
-  -d '{"Age": 25, "Height": 1.75, "Weight": 85, "Gender": "Male", ...}'
+# 9. Test the API
+curl http://localhost:8001/health
 
-# 6. View results
-API Docs: http://localhost:8001/docs
-MLflow: http://localhost:5001
+# 10. View documentation
+# API Docs: http://localhost:8001/docs
+# MLflow UI: http://localhost:5001
 ```
+
+### Quick Verification
+
+After setup, verify everything works:
+
+```bash
+# Check API is running
+curl http://localhost:8001/health
+
+# Check model exists
+ls models/best_pipeline.joblib
+
+# Check tests pass
+docker-compose run --rm dvc-pipeline pytest tests/ -q
+```
+
+### Common First-Time Issues
+
+**Issue: "File not found" errors in tests**
+- **Solution:** Run `docker-compose run --rm dvc-pipeline dvc pull` to download data from S3
+
+**Issue: "AWS credentials not found"**
+- **Solution:** Verify `.env` file exists and has correct `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`
+
+**Issue: "Docker daemon not running"**
+- **Solution:** Start Docker Desktop and wait for it to fully start
+
+**Issue: "Port 8001 already in use"**
+- **Solution:** Change port in `docker-compose.yml` or stop other services using that port
 
 ---
 
@@ -319,28 +379,94 @@ Recommended action: Schedule immediate retraining
 
 ### Setup & Configuration
 
-```bash
-# 1. Environment variables
-cp config/docker.env.template .env
-# Edit .env with your AWS credentials (or use local S3 mock)
+#### First Time Setup
 
-# 2. Build Docker image
+**1. Clone and Navigate:**
+```bash
+git clone <repo-url>
+cd Fase-2_Equipo52
+```
+
+**2. Create Environment File:**
+```bash
+# Copy the example template
+cp .env.example .env
+
+# Edit .env with your AWS credentials
+# Required variables:
+#   AWS_ACCESS_KEY_ID=your_aws_access_key_id
+#   AWS_SECRET_ACCESS_KEY=your_aws_secret_access_key
+```
+
+**3. Build Docker Images:**
+```bash
+# This will take 3-5 minutes the first time
 docker-compose build
 
-# 3. Verify setup
-docker-compose run --rm shell dvc status
+# Verify build succeeded
+docker images | grep fase-2_equipo52
+```
+
+**4. Download Data from S3:**
+```bash
+# Download all versioned data and models from S3
+docker-compose run --rm dvc-pipeline dvc pull
+
+# Verify data was downloaded
+ls -la data/raw/obesity_estimation_modified.csv
+ls -la data/interim/dataset_limpio_refactored.csv
+```
+
+**5. Verify Setup:**
+```bash
+# Check DVC status
+docker-compose run --rm dvc-pipeline dvc status
+
+# Should show "Everything is up to date" or list files to download
+```
+
+#### Troubleshooting Setup
+
+**If `.env` file is missing:**
+```bash
+# Create it manually
+echo "AWS_ACCESS_KEY_ID=your_key" > .env
+echo "AWS_SECRET_ACCESS_KEY=your_secret" >> .env
+```
+
+**If data files are missing:**
+```bash
+# Download from S3
+docker-compose run --rm dvc-pipeline dvc pull
+
+# If dvc pull fails, check AWS credentials in .env
+cat .env | grep AWS
+```
+
+**If Docker build fails:**
+```bash
+# Rebuild without cache
+docker-compose build --no-cache
+
+# Check Docker is running
+docker ps
 ```
 
 ### Running Pipelines
 
+**⚠️ Important:** Before running the pipeline, ensure:
+1. `.env` file exists with AWS credentials
+2. Data files are downloaded: `docker-compose run --rm dvc-pipeline dvc pull`
+3. Docker images are built: `docker-compose build`
+
 **Single Unified Pipeline** (includes all functionality):
 
 ```bash
+# Run complete pipeline (recommended for first time)
 docker-compose run --rm dvc-pipeline-basic
-# OR: docker-compose run dvc-pipeline
 
-# Runs (9 stages total):
-#  1. EDA - Exploratory Data Analysis
+# This runs 9 stages automatically:
+#  1. EDA - Exploratory Data Analysis (generates cleaned dataset)
 #  2. Preprocess - Feature engineering, scaling
 #  3. Train - Model training with cross-validation
 #  4. Evaluate - Model evaluation and metrics
@@ -355,27 +481,98 @@ docker-compose run --rm dvc-pipeline-basic
 # Includes: Data versioning, reproducibility, drift detection, and testing
 ```
 
-### Testing
+**Run Individual Stages:**
 
 ```bash
-# All tests with coverage report
-pytest tests/ -v --tb=short --cov=src --cov-report=html
+# Run only EDA stage
+docker-compose run --rm dvc-pipeline dvc repro eda
 
-# Quick test (summary only)
-pytest tests/ -q
+# Run EDA + Preprocess
+docker-compose run --rm dvc-pipeline dvc repro preprocess
+
+# Run only training
+docker-compose run --rm dvc-pipeline dvc repro train
+
+# Run only tests
+docker-compose run --rm dvc-pipeline pytest tests/ -v
+```
+
+**Verify Pipeline Completed Successfully:**
+
+```bash
+# Check model was created
+ls -la models/best_pipeline.joblib
+ls -la models/model_metadata.joblib
+
+# Check reports were generated
+ls -la reports/figures/
+ls -la reports/metrics/
+ls -la reports/drift/
+
+# Check tests passed (should show 67 passed)
+docker-compose run --rm dvc-pipeline pytest tests/ -q
+```
+
+### Testing
+
+**Run All Tests:**
+```bash
+# In Docker (recommended)
+docker-compose run --rm dvc-pipeline pytest tests/ -v
+
+# Expected output: 67 passed, 50 warnings
+# Some tests may be skipped if data files don't exist (this is normal)
+```
+
+**Test Options:**
+```bash
+# Quick summary (no verbose output)
+docker-compose run --rm dvc-pipeline pytest tests/ -q
+
+# With coverage report
+docker-compose run --rm dvc-pipeline pytest tests/ -v --cov=src --cov-report=html
 
 # Specific test file
-pytest tests/test_api.py -v
+docker-compose run --rm dvc-pipeline pytest tests/test_api.py -v
 
-# In Docker
-docker-compose run --rm test
+# Run only tests that don't require data files
+docker-compose run --rm dvc-pipeline pytest tests/test_ml_pipeline.py tests/test_drift_detection.py tests/test_api.py -v
+```
+
+**Understanding Test Results:**
+- ✅ **67 passed**: All critical tests passing
+- ⚠️ **Some skipped**: Normal if data files not generated yet (run `dvc repro eda` first)
+- ❌ **Failed**: Check error messages, may need to run pipeline first
+
+**If Tests Fail:**
+```bash
+# If test_comparison.py fails, run EDA pipeline first
+docker-compose run --rm dvc-pipeline dvc repro eda
+
+# Then run tests again
+docker-compose run --rm dvc-pipeline pytest tests/ -v
 ```
 
 ### API Usage
 
 **Start the API**:
 ```bash
+# Start API in background
 docker-compose up -d api
+
+# Verify API is running
+curl http://localhost:8001/health
+
+# Expected response:
+# {"status":"healthy","model_loaded":true,"version":"1.0.0","timestamp":"..."}
+
+# If model not loaded, wait a few seconds and try again
+# Or check logs: docker-compose logs api
+```
+
+**⚠️ Note:** The API requires the model to be trained first. If you see `"model_loaded": false`, run the training pipeline:
+```bash
+docker-compose run --rm dvc-pipeline dvc repro train
 ```
 
 **Make predictions**:
